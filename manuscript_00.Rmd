@@ -53,7 +53,10 @@ library(RSQLite)
 meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_15_meta_filter.fst")
 ```
 
-# Distribution of Tissues and Cell Types in scEiaD
+# (sup?) Table 1
+Studies in scEiaD
+
+# Figure 1 Distribution of Tissues and Cell Types in scEiaD
 ```{r, fig.width=8, fig.height=5}
 # organ
 a <- meta_filter %>%
@@ -62,6 +65,24 @@ a <- meta_filter %>%
          Tissue = gsub('\\.|_', ' ', Tissue),
          Tissue = gsub("RPE$","RPE-Choroid", Tissue),
          Tissue = gsub(" and Aorta","", Tissue)) %>% 
+  filter(Organ == 'Body') %>% 
+  group_by(Organ, Tissue,organism, study_accession) %>%
+  summarise(Count = n()) %>%
+  ungroup() %>% 
+  ggplot(aes(x=Tissue,y=Count, fill = organism, group = organism)) +
+  ylab('Number of Cells') +
+  geom_bar(stat='identity', position = 'dodge') +
+  cowplot::theme_cowplot() +
+  coord_flip() +
+  scale_y_continuous(breaks = c(2500, 5000, 7500, 10000, 12500, 84000))
+
+b <-  meta_filter %>%
+  mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
+                           TRUE ~ 'Body'),
+         Tissue = gsub('\\.|_', ' ', Tissue),
+         Tissue = gsub("RPE$","RPE-Choroid", Tissue),
+         Tissue = gsub(" and Aorta","", Tissue)) %>% 
+  filter(Organ == 'Eye') %>% 
   group_by(Organ, Tissue,organism, study_accession) %>%
   summarise(Count = n()) %>%
   ungroup() %>% 
@@ -73,7 +94,7 @@ a <- meta_filter %>%
   coord_flip()
 
 # retina cell types
-b <- meta_filter %>% filter(Organ == 'Eye') %>% 
+c <- meta_filter %>% filter(Organ == 'Eye') %>% 
   group_by(CellType_predict, study_accession, organism) %>%
   summarise(Count = n()) %>% filter(Count > 10) %>% ungroup() %>% 
   ggplot(aes(x=CellType_predict,y=Count, fill = organism, group = organism)) +
@@ -82,44 +103,39 @@ b <- meta_filter %>% filter(Organ == 'Eye') %>%
   cowplot::theme_cowplot() +
   coord_flip()
 
-plot_grid(a,b)
+plot_grid(a +  ggbreak::scale_y_break(c(13000, 82000)),b, c)
 ```
-# Distribution of ML Retina Cell Types Between Mouse and Human in Pan-Retina Studies
-Drop this figure?
-```{r, fig.height=5, fig.width=3}
-library(tidyverse)
-meta_filter <- fst::read_fst('~/data/scEiaD/2021_08_22_meta_filter.fst') %>%
-  as_tibble() %>%
-  mutate(CellType_predict = case_when(!is.na(TabulaMurisCellType_predict) ~ 'Tabula Muris',
-                                      is.na(CellType_predict) ~ 'Unlabelled',
-                                      TRUE ~ CellType_predict)) 
 
-pan_retina_studies <- c('SRP255195','E-MTAB-7316','SRP151023','SRP222001','SRP222958','SRP194595','SRP223254','SRP050054','SRP269634','SRP269635','SRP158528', 'SRP257758','SRP212788')
+# sup fig 1 
+Effect of decontx for Rho between scEiaD v2 and scEiaD v1
+
+<!-- ```{r, fig.height=5, fig.width=3} -->
+<!-- # Distribution of ML Retina Cell Types Between Mouse and Human in Pan-Retina Studies -->
+<!-- Drop this figure? -->
+<!-- Yes -->
+
+<!-- pan_retina_studies <- c('SRP255195','E-MTAB-7316','SRP151023','SRP222001','SRP222958','SRP194595','SRP223254','SRP050054','SRP269634','SRP269635','SRP158528', 'SRP257758','SRP212788') -->
 
 
-meta_filter %>% 
-  filter(organism %in% c('Mus musculus','Homo sapiens'), 
-         Stage == 'Mature', 
-         study_accession %in% pan_retina_studies, 
-         grepl('Amacr|Bipol|Cone|Epithel|Endoth|Horizon|Muller|Pericy|Ganglion|Rod', CellType_predict)) %>% 
-  group_by(study_accession, CellType_predict) %>% 
-  summarise(Count = n()) %>% mutate(Percentage = 100 * (Count / sum(Count)))  %>% 
-  left_join(meta_filter %>% select(study_accession, Platform, organism) %>% unique()) %>% 
-  ggplot(aes(x=organism, y=Percentage)) + 
-  geom_boxplot() + 
-  coord_flip() + 
-  ggbeeswarm::geom_quasirandom(aes(color=study_accession)) + 
-  facet_wrap(~CellType_predict, ncol = 1) + 
-  cowplot::theme_cowplot()
-```
+<!-- meta_filter %>%  -->
+<!--   filter(organism %in% c('Mus musculus','Homo sapiens'),  -->
+<!--          Stage == 'Mature',  -->
+<!--          study_accession %in% pan_retina_studies,  -->
+<!--          grepl('Amacr|Bipol|Cone|Epithel|Endoth|Horizon|Muller|Pericy|Ganglion|Rod', CellType_predict)) %>%  -->
+<!--   group_by(study_accession, CellType_predict) %>%  -->
+<!--   summarise(Count = n()) %>% mutate(Percentage = 100 * (Count / sum(Count)))  %>%  -->
+<!--   left_join(meta_filter %>% select(study_accession, Platform, organism) %>% unique()) %>%  -->
+<!--   ggplot(aes(x=organism, y=Percentage)) +  -->
+<!--   geom_boxplot() +  -->
+<!--   coord_flip() +  -->
+<!--   ggbeeswarm::geom_quasirandom(aes(color=study_accession)) +  -->
+<!--   facet_wrap(~CellType_predict, ncol = 1) +  -->
+<!--   cowplot::theme_cowplot() -->
+<!-- ``` -->
 # Introduction
 ## Many published ocular atlases
 
-## Data not easily available for all
-
-## Some have accompanying apps
-
-## But apps are generally slow and have minimal exploration tooling
+## Data difficult to access 
 
 ## Cross comparisons difficult
 But important as seeing trends trends across different groups strongly demonstrates that 
@@ -127,16 +143,16 @@ the signal is biological, not technical.
 
 ## What we did
 
-Built an awesome app.
+Collated XX studies and processed 
 
 
 # Methods
 
-## Use scEiaD resource
-We built, published [].
+## Update scEiaD resource
+Our first version of scEiaD contained XX studies, 3 species, XX cells, and XX curated cell types. We updated the scEiaD resource for the PLAE web app in several important ways. First, we added two chicken (*Gallus gallus*) studies. Second, we added a human pan-body reference scRNA dataset. Third, we used an *in silico* method to remove background gene contamination. Fourth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained. 
 
 ## pan mouse and pan human as non-ocular reference
-Tabula Muris
+Tabula Muris and 
 
 # Results
 
