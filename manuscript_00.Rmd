@@ -50,7 +50,10 @@ supTab_cap <- captioner("Supplemental Table")
 
 library(pool)
 library(RSQLite)
-meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_15_meta_filter.fst")
+meta_filter_v0 <- fst::read_fst("~/data/scEiaD/2021_03_17_meta_filter.fst")
+# remove eric bharti 2D/3D RPE
+meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_15_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D')
+
 ```
 
 # (sup?) Table 1
@@ -76,6 +79,7 @@ a <- meta_filter %>%
   coord_flip() +
   scale_y_continuous(breaks = c(2500, 5000, 7500, 10000, 12500, 84000))
 
+# eye studies
 b <-  meta_filter %>%
   mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
                            TRUE ~ 'Body'),
@@ -92,9 +96,28 @@ b <-  meta_filter %>%
   cowplot::theme_cowplot() +
   facet_wrap(~Organ, scales = 'free') +
   coord_flip()
+# eye studies samples
+c <-  meta_filter %>%
+  mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
+                           TRUE ~ 'Body'),
+         Tissue = gsub('\\.|_', ' ', Tissue),
+         Tissue = gsub("RPE$","RPE-Choroid", Tissue),
+         Tissue = gsub(" and Aorta","", Tissue)) %>% 
+  filter(Organ == 'Eye') %>% 
+  select(Organ, Tissue,organism, study_accession) %>%
+  unique() %>%
+  group_by(Organ, Tissue, organism) %>% 
+  summarise(Count = n()) %>%
+  ungroup() %>% 
+  ggplot(aes(x=Tissue,y=Count, fill = organism, group = organism)) +
+  ylab('Number of Cells') +
+  geom_bar(stat='identity', position = 'dodge') +
+  cowplot::theme_cowplot() +
+  facet_wrap(~Organ, scales = 'free') +
+  coord_flip()
 
 # retina cell types
-c <- meta_filter %>% filter(Organ == 'Eye') %>% 
+d <- meta_filter %>% filter(Organ == 'Eye') %>% 
   group_by(CellType_predict, study_accession, organism) %>%
   summarise(Count = n()) %>% filter(Count > 10) %>% ungroup() %>% 
   ggplot(aes(x=CellType_predict,y=Count, fill = organism, group = organism)) +
@@ -148,15 +171,23 @@ Collated XX studies and processed
 
 # Methods
 
-## Update scEiaD resource
-Our first version of scEiaD contained XX studies, 3 species, XX cells, and XX curated cell types. We updated the scEiaD resource for the PLAE web app in several important ways. First, we added two chicken (*Gallus gallus*) studies. Second, we added a human pan-body reference scRNA dataset. Third, we used an *in silico* method to remove background gene contamination. Fourth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained. 
+
 
 ## pan mouse and pan human as non-ocular reference
 Tabula Muris and 
 
 # Results
 
-## Rich functionality
+## Updated the scEiaD backend
+Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.80 web app in four important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset. Third, we added a human pan-body reference scRNA dataset. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fourth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450. 
+
+After the dataset and quality control updates the scEiaD v02 dataset contains `r meta_filter_$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
+
+## PLAE contains 10 fold more cells and studies than the closest comparable web app
+
+## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
+
+## Rich functionality 
 
 ## Web accessible
 
