@@ -52,7 +52,7 @@ library(pool)
 library(RSQLite)
 meta_filter_v0 <- fst::read_fst("~/data/scEiaD/2021_03_17_meta_filter.fst")
 # remove eric bharti 2D/3D RPE
-meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_15_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D')
+meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_22_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D')
 
 ```
 
@@ -62,6 +62,7 @@ Studies in scEiaD
 # Figure 1 Distribution of Tissues and Cell Types in scEiaD
 ```{r, fig.width=8, fig.height=5}
 # organ
+meta_filter <- meta_filter %>% mutate(organism = factor(organism, levels = meta_filter$organism %>% unique()))
 a <- meta_filter %>%
   mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
                            TRUE ~ 'Body'),
@@ -72,12 +73,17 @@ a <- meta_filter %>%
   group_by(Organ, Tissue,organism, study_accession) %>%
   summarise(Count = n()) %>%
   ungroup() %>% 
+  mutate(organism = factor(organism, levels = meta_filter$organism %>% unique())) %>% 
   ggplot(aes(x=Tissue,y=Count, fill = organism, group = organism)) +
   ylab('Number of Cells') +
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
   coord_flip() +
-  scale_y_continuous(breaks = c(2500, 5000, 7500, 10000, 12500, 84000))
+  scale_y_continuous(breaks = c(2500, 5000, 7500, 10000, 12500, 84000)) +
+  ggbreak::scale_y_break(c(13000, 82000)) +
+  scale_fill_discrete(drop=TRUE,
+                      limits = levels(meta_filter$organism)) +
+  theme(legend.position = "none")
 
 # eye studies
 b <-  meta_filter %>%
@@ -85,17 +91,19 @@ b <-  meta_filter %>%
                            TRUE ~ 'Body'),
          Tissue = gsub('\\.|_', ' ', Tissue),
          Tissue = gsub("RPE$","RPE-Choroid", Tissue),
+         Tissue = case_when(Tissue == "Choroid" ~ 'RPE-Choroid',
+                            TRUE ~ Tissue),
          Tissue = gsub(" and Aorta","", Tissue)) %>% 
   filter(Organ == 'Eye') %>% 
-  group_by(Organ, Tissue,organism, study_accession) %>%
+  group_by(Organ, Tissue,organism) %>%
   summarise(Count = n()) %>%
   ungroup() %>% 
   ggplot(aes(x=Tissue,y=Count, fill = organism, group = organism)) +
   ylab('Number of Cells') +
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
-  facet_wrap(~Organ, scales = 'free') +
-  coord_flip()
+  coord_flip() +
+  theme(legend.position = "none")
 # eye studies samples
 c <-  meta_filter %>%
   mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
@@ -110,11 +118,11 @@ c <-  meta_filter %>%
   summarise(Count = n()) %>%
   ungroup() %>% 
   ggplot(aes(x=Tissue,y=Count, fill = organism, group = organism)) +
-  ylab('Number of Cells') +
+  ylab('Number of Studies') +
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
-  facet_wrap(~Organ, scales = 'free') +
-  coord_flip()
+  coord_flip() +
+  theme(legend.position = "none")
 
 # retina cell types
 d <- meta_filter %>% filter(Organ == 'Eye') %>% 
@@ -126,7 +134,7 @@ d <- meta_filter %>% filter(Organ == 'Eye') %>%
   cowplot::theme_cowplot() +
   coord_flip()
 
-plot_grid(a +  ggbreak::scale_y_break(c(13000, 82000)),b, c)
+plot_grid(a,b, c, d)
 ```
 
 # sup fig 1 
