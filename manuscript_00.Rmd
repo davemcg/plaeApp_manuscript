@@ -187,17 +187,17 @@ Tabula Muris and
 # Results
 
 ## Updated the scEiaD backend
-Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.80 web app in four important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset. Third, we added a human pan-body reference scRNA dataset. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fourth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450. 
+Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.80 web app in five important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset. Third, we added a human pan-body reference scRNA dataset. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fourth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450. Fifth, we carried and harmonnized several common cell type labels from the Tabula Muris dataset to more easily provide non eye cell type comparisons. 
 
-After the dataset and quality control updates the scEiaD v02 dataset contains `r meta_filter_$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
+After the dataset and quality control updates the scEiaD v02 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
 
 ## PLAE contains 10 fold more cells and studies than the closest comparable web app
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
-## Rich functionality 
+## Rich web functionality 
 
-## Web accessible
+## Differential testing identifies thousands of genes enriched in various ocular cell types
 
 ## 
 
