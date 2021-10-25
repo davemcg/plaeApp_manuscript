@@ -25,7 +25,7 @@ output:
     pandoc_args:
       - '--lua-filter=scholarly-metadata.lua'
       - '--lua-filter=author-info-blocks.lua'
-bibliography: massive_integrated_eye_scRNA.bib
+bibliography: zotero_plaeApp.bib
 csl: investigative-ophthalmology-and-visual-science.csl
 abstract: "PURPOSE: To create a high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We wrote the Shiny web application PLAE (https://plae.nei.nih.gov) and tailored the structure of the underlying data (sc Eye in a Disk, scEiaD) to display scEiaD. RESULTS: The new portal provides quick visualization of over a million individual cells from vertebrate eye-and body transcriptomes., XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we show XX. CONCLUSION: The PLAE v0.80 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on gene and transcript expression across 54 body and 19 eye tissues. "
 keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
@@ -58,6 +58,9 @@ meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_22_meta_filter.fst") %>% 
 
 # (sup?) Table 1
 Studies in scEiaD
+```{r}
+meta_filter %>% group_by(Citation, PMID, study_accession) %>% summarise(Count = n()) %>% flextable()
+```
 
 # Figure 1 Distribution of Tissues and Cell Types in scEiaD
 ```{r, fig.width=8, fig.height=5}
@@ -70,6 +73,7 @@ a <- meta_filter %>%
          Tissue = gsub("RPE$","RPE-Choroid", Tissue),
          Tissue = gsub(" and Aorta","", Tissue)) %>% 
   filter(Organ == 'Body') %>% 
+  filter(Tissue != 'Brain Choroid Plexus') %>% 
   group_by(Organ, Tissue,organism, study_accession) %>%
   summarise(Count = n()) %>%
   ungroup() %>% 
@@ -79,11 +83,30 @@ a <- meta_filter %>%
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
   coord_flip() +
-  scale_y_continuous(breaks = c(2500, 5000, 7500, 10000, 12500, 84000)) +
-  ggbreak::scale_y_break(c(13000, 82000)) +
+  # scale_y_continuous(breaks = c(2500, 5000, 7500, 10000, 12500, 84000)) +
+  # ggbreak::scale_y_break(c(13000, 82000)) +
   scale_fill_discrete(drop=TRUE,
                       limits = levels(meta_filter$organism)) +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  scale_y_continuous(expand = c(0, 0)) + 
+  ylab('') + xlab('')
+  
+aa <- meta_filter %>% 
+  filter(Tissue == 'Brain Choroid Plexus') %>% 
+  group_by(Organ, Tissue,organism, study_accession) %>%
+  summarise(Count = n()) %>%
+  ungroup() %>% 
+  mutate(organism = factor(organism, levels = meta_filter$organism %>% unique())) %>% 
+  ggplot(aes(x=Tissue,y=Count, fill = organism, group = organism)) +
+  ylab('Number of Cells') +
+  geom_bar(stat='identity', position = 'dodge') +
+  cowplot::theme_cowplot() +
+  coord_flip() +
+  scale_fill_discrete(drop=TRUE,
+                      limits = levels(meta_filter$organism)) +
+  theme(legend.position = "none") +
+  scale_y_continuous(expand = c(0, 0)) + 
+  ylab('') + xlab('')
 
 # eye studies
 b <-  meta_filter %>%
@@ -103,7 +126,10 @@ b <-  meta_filter %>%
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
   coord_flip() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  scale_y_continuous(expand = c(0, 0)) +
+  xlab('')
+
 # eye studies samples
 c <-  meta_filter %>%
   mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
@@ -122,7 +148,8 @@ c <-  meta_filter %>%
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
   coord_flip() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  scale_y_continuous(expand = c(0, 0))  + xlab('')
 
 # retina cell types
 d <- meta_filter %>% filter(Organ == 'Eye') %>% 
@@ -132,9 +159,13 @@ d <- meta_filter %>% filter(Organ == 'Eye') %>%
   ylab('Number of Cells') +
   geom_bar(stat='identity', position = 'dodge') +
   cowplot::theme_cowplot() +
-  coord_flip()
+  coord_flip() + 
+  scale_y_continuous(expand = c(0, 0)) + xlab('')
 
-plot_grid(a,b, c, d)
+
+a_aa_b <- plot_grid(a,aa,b, ncol = 1, align = 'hv', rel_heights = c(10, 1.5,3.5), labels = 'a')
+c_d <- plot_grid(c,d, rel_heights = c(2,10), ncol = 1, align= 'hv', axis = 'l',labels = c('b','c'))
+plot_grid(a_aa_b, c_d, ncol = 2, rel_widths = c(1,1.2))
 ```
 
 # sup fig 1 
@@ -166,9 +197,12 @@ Effect of decontx for Rho between scEiaD v2 and scEiaD v1
 # Introduction
 ## Many published ocular atlases
 
-## Data difficult to access 
+## Pan Atlases contain limited retina cell types or lack integration
 
-## Cross comparisons difficult
+Tabula Sapiens, MOCA (?), BBrowser (\$\$\$), https://cells.ucsc.edu
+
+## Data difficult to access and cross comparisons impossible
+
 But important as seeing trends trends across different groups strongly demonstrates that 
 the signal is biological, not technical. 
 
@@ -176,10 +210,7 @@ the signal is biological, not technical.
 
 Collated XX studies and processed 
 
-
 # Methods
-
-
 
 ## pan mouse and pan human as non-ocular reference
 Tabula Muris and 
@@ -191,7 +222,20 @@ Our first version of the single cell Eye is a Disk (scEiaD) database contained `
 
 After the dataset and quality control updates the scEiaD v02 dataset contains `r meta_filter_$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
 
-## PLAE contains 10 fold more cells and studies than the closest comparable web app
+# Comparison of PLAE to "pan" web apps with retina data
+```{r}
+feature_table <- cbind(c('Spectacle', 'No' ,'No', ),
+                       c('UCSC Cell Browser', 'Yes', 'No', 'https://cells.ucsc.edu' ),
+                       c('Tabula Sapiens', 'No', 'N/A', 'https://tabula-sapiens-portal.ds.czbiohub.org'),
+                       c('PLAE','Yes','Yes', 'plae.nei.nih.gov'),
+                       c('PanglaoDB', 'Yes', 'No'),
+                       c('Protein Atlas', 'Yes','No', 'https://www.proteinatlas.org/humanproteome/celltype'))
+colnames(feature_table) <- c('Resource Name', 'Independent Datasets', 'Harmonization', 'URL')
+```
+
+## PLAE contains over 10 fold more cells and studies than the closest comparable web app
+
+The Spectacle web app also provides a web app to access 87,305 single cell transcriptomes across four publications.
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
