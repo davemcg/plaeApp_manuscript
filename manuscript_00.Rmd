@@ -16,6 +16,9 @@ institute:
   - bg: Bioinformatics Group, Ophthalmic Genetics & Visual Function Branch, National Eye Institute, National Institutes of Health
   - nnrl: Neurobiology, Neurodegeneration & Repair Laboratory, National Eye Institute, National Institutes of Health
   - mgog: Medical Genetics and Ophthalmic Genomics Unit, National Eye Institute, National Institutes of Health
+```{r}
+
+```
     
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
@@ -27,7 +30,7 @@ output:
       - '--lua-filter=author-info-blocks.lua'
 bibliography: zotero_plaeApp.bib
 csl: investigative-ophthalmology-and-visual-science.csl
-abstract: "PURPOSE: To create a high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We wrote the Shiny web application PLAE (https://plae.nei.nih.gov) and tailored the structure of the underlying data (sc Eye in a Disk, scEiaD) to display scEiaD. RESULTS: The new portal provides quick visualization of over a million individual cells from vertebrate eye-and body transcriptomes., XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we show XX. CONCLUSION: The PLAE v0.80 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on gene and transcript expression across 54 body and 19 eye tissues. "
+abstract: "PURPOSE: To create a high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We wrote the Shiny web application PLAE (https://plae.nei.nih.gov) and tailored the structure of the underlying data (single cell Eye in a Disk, scEiaD) to asdfasdf. RESULTS: The new portal provides quick visualization of over a million individual cells from vertebrate eye-and body transcriptomes., XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we show XX. CONCLUSION: The PLAE v0.80 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on gene and transcript expression across 54 body and 19 eye tissues. "
 keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
 ---
 
@@ -50,9 +53,17 @@ supTab_cap <- captioner("Supplemental Table")
 
 library(pool)
 library(RSQLite)
-meta_filter_v0 <- fst::read_fst("~/data/scEiaD/2021_03_17_meta_filter.fst")
+meta_filter_v0 <- fst::read_fst("~/data/scEiaD/2021_03_17_meta_filter.fst") %>% 
+  mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType_predict),
+         CellType= case_when(CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType))
 # remove eric bharti 2D/3D RPE
-meta_filter <- fst::read_fst("~/data/scEiaD_v2/2021_10_22_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D')
+meta_filter <- fst::read_fst("/Volumes/McGaughey_S/scEiaD_v3/2021_11_09_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
+  mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType_predict),
+         CellType= case_when(CellType == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType))
 
 ```
 
@@ -90,7 +101,7 @@ a <- meta_filter %>%
   theme(legend.position = "none") +
   scale_y_continuous(expand = c(0, 0)) + 
   ylab('') + xlab('')
-  
+
 aa <- meta_filter %>% 
   filter(Tissue == 'Brain Choroid Plexus') %>% 
   group_by(Organ, Tissue,organism, study_accession) %>%
@@ -168,9 +179,28 @@ c_d <- plot_grid(c,d, rel_heights = c(2,10), ncol = 1, align= 'hv', axis = 'l',l
 plot_grid(a_aa_b, c_d, ncol = 2, rel_widths = c(1,1.2))
 ```
 
-# sup fig 1 
-Effect of decontx for Rho between scEiaD v2 and scEiaD v1
+# Sup fig 1 
+DecontX *in silico* ambient RNA contamination tool substantially removes Rhodopsin expression in non-rod cells while retaining high expression rods. First shown (a) is Rhodopsin expression across the scEiaD v0 dataset, without DecontX optimization. Note Rhodopsin expression is noticeable in many cell types beyond the rods. Next (b) is the scEiaD v1 dataset with DecontX optimization. Rhodopsin is nearly exclusively expressed in labelled rod cells. Despite the computational ambient RNA removal, Rhodopsin expression remains high in the Rods. 
 
+```{r, fig.width=10, fig.height=12}
+source('src/make_exp_plot.R')
+scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  '~/data/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite')
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  '/Volumes/McGaughey_S/scEiaD_v3/MOARTABLES__anthology_limmaFALSE___6000-counts-universe-batch-scVIprojection-10-15-0.1-50-20.sqlite')
+
+input <- list()
+input$exp_plot_groups <- c('organism')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- c('RHO (ENSG00000163914)')
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+
+v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
+v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+input$exp_filter_min_cell_number <- 1000
+v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellType_predict %in% unique(meta_filter_v0$CellType_predict)))
+plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
+```
 <!-- ```{r, fig.height=5, fig.width=3} -->
 <!-- # Distribution of ML Retina Cell Types Between Mouse and Human in Pan-Retina Studies -->
 <!-- Drop this figure? -->
@@ -194,12 +224,14 @@ Effect of decontx for Rho between scEiaD v2 and scEiaD v1
 <!--   facet_wrap(~CellType_predict, ncol = 1) +  -->
 <!--   cowplot::theme_cowplot() -->
 <!-- ``` -->
+
 # Introduction
+
 ## Many published ocular atlases
 
-## Pan Atlases contain limited retina cell types or lack integration
+## Several web atlases with ocular cells exist but have significant limitations
 
-Tabula Sapiens, MOCA (?), BBrowser (\$\$\$), https://cells.ucsc.edu
+There are several web app resources for querying gene expression across ocular cell types (table 1). 
 
 ## Data difficult to access and cross comparisons impossible
 
@@ -217,20 +249,24 @@ Tabula Muris and
 
 # Results
 
-## Updated the scEiaD backend
-Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.80 web app in five important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset. Third, we added a human pan-body reference scRNA dataset. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fourth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450. Fifth, we carried and harmonnized several common cell type labels from the Tabula Muris dataset to more easily provide non eye cell type comparisons. 
+## Updates to the scEiaD backend
+Version zero of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.80 web app in five important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added human ocular outflow tract and cornea datasets. Third, we added a human pan-body reference scRNA dataset. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fifth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450. Sixth, we carried and harmonized several common cell type labels from the Tabula Muris dataset to more easily provide non eye cell type comparisons. 
 
 After the dataset and quality control updates the scEiaD v02 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
 
-# Comparison of PLAE to "pan" web apps with retina data
+# Comparison of PLAE to "pan" scRNA web apps containing ocular data
 ```{r}
-feature_table <- cbind(c('Spectacle', 'No' ,'No', ),
-                       c('UCSC Cell Browser', 'Yes', 'No', 'https://cells.ucsc.edu' ),
-                       c('Tabula Sapiens', 'No', 'N/A', 'https://tabula-sapiens-portal.ds.czbiohub.org'),
-                       c('PLAE','Yes','Yes', 'plae.nei.nih.gov'),
-                       c('PanglaoDB', 'Yes', 'No'),
-                       c('Protein Atlas', 'Yes','No', 'https://www.proteinatlas.org/humanproteome/celltype'))
-colnames(feature_table) <- c('Resource Name', 'Independent Datasets', 'Harmonization', 'URL')
+feature_table <- rbind(
+  c('PLAE','Yes','Yes', 'Yes', '887', 'https://plae.nei.nih.gov'),
+  c('Spectacle', 'No' ,'No', 'No', '87', 'https://singlecell-eye.org'),
+  c('UCSC Cell Browser', 'Yes', 'No', 'Yes', '62', 'https://cells.ucsc.edu' ),
+  c('Tabula Sapiens', 'No', 'N/A', 'Yes', '10', 'https://tabula-sapiens-portal.ds.czbiohub.org'),
+  c('PanglaoDB', 'Yes', 'No', 'Yes', '47', 'https://panglaodb.se'),
+  c('Protein Atlas', 'Yes*','No', 'Yes', '5',  'https://www.proteinatlas.org/humanproteome/celltype')) %>% 
+  as_tibble()
+colnames(feature_table) <- c('Resource Name', 'Independent Datasets', 'Harmonization', 'Ocular and non-Ocular Data', 'Ocular Cell Count\n(thousands)', 'URL')
+feature_table %>% flextable()
+# as of 2021 10 25
 ```
 
 ## PLAE contains over 10 fold more cells and studies than the closest comparable web app
