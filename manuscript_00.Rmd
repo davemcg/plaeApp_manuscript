@@ -271,7 +271,7 @@ feature_table %>% flextable()
 
 ## PLAE contains over 10 fold more cells and studies than the closest comparable web app
 
-The Spectacle web app also provides a web app to access 87,305 single cell transcriptomes across four publications.
+The Spectacle web app contains access 87,305 single cell transcriptomes across four publications.
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
