@@ -240,13 +240,28 @@ Collated XX studies and processed
 
 # Methods
 
+## New studies identified since 2019 data run
+
+## scEiaD re-created and pipeline updated
+
+The scEiaD pipeline is largely the same as in Swamy et al. [@swamy_building_2021]. Briefly, we collect the raw fastq files and quantify with the kallisto with the bustools system [@melsted_barcode_2019; @melsted_modular_2019]. The quantified counts are merged into one large matrix that is used for downstream processing with scvitools to batch correct the data and Seurat for quality control, cluster finding, UMAP finding. We use a xgboost-based machine learning approach to transfer cell type labels to unlabelled cells.  
+
+The following alterations were made: First, the cutoff to retain a cell was raised from 200 unique genes quantified to 300 Second, we use the DecontX algorithm [@yang_decontamination_2020] from the celda R package (version 1.9.2) to automatically remove ambient RNA contamination. Third, we altered the procedure for automatically aligning gene names across species (see below for details). Fourth, we use the scANVI (scvitools based) batch correction method, which leverages the known cell type labels in batch correction. 
+
+## Cross species gene alignment
+
+As we have four species in scEiaD (*Gallus gallus*, *Macaca fascicularis*, *Mus musculus*, and *Homo sapiens*) that we unify in a combined data analysis, we must align shared genes. We use a multi-step procedure. 
+
+##    
+
+
 ## pan mouse and pan human as non-ocular reference
 Tabula Muris and 
 
 # Results
 
 ## Updated the scEiaD backend
-Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.90 web app in four important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset and two more cornea datasets. Third, we added a human pan-body reference scRNA dataset. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fifth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450. Sixth, we carried and harmonized several common cell type labels from the Tabula Muris dataset to more easily provide non eye cell type comparisons.
+Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types. We updated the scEiaD resource for the PLAE v0.90 web app in four important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset and two more cornea datasets to enhance coverage across the eye. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fifth, we increased the minimum number of detected unique transcripts per cell required for a cell to be retained from 300 to 450, which reduces the number of cells but improves the quality. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris dataset to more easily provide non eye cell type comparisons.
 
 After the dataset and quality control updates the scEiaD v02 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
 
@@ -254,8 +269,8 @@ After the dataset and quality control updates the scEiaD v02 dataset now contain
 ```{r}
 
 feature_table <- rbind(
-  c('PLAE','Yes','Yes', 'Yes', '887', 'https://plae.nei.nih.gov'),
-  c('Spectacle', 'No' ,'No', 'No', '87', 'https://singlecell-eye.org'),
+  c('PLAE','Yes','Yes', 'Yes', '1004', 'https://plae.nei.nih.gov'),
+  c('Spectacle', 'Yes' ,'No', 'No', '1800', 'https://singlecell-eye.org'),
   c('UCSC Cell Browser', 'Yes', 'No', 'Yes', '62', 'https://cells.ucsc.edu' ),
   c('Tabula Sapiens', 'No', 'N/A', 'Yes', '10', 'https://tabula-sapiens-portal.ds.czbiohub.org'),
   c('PanglaoDB', 'Yes', 'No', 'Yes', '47', 'https://panglaodb.se'),
@@ -268,7 +283,7 @@ feature_table %>% flextable()
 
 ## PLAE differs from a complementary web app, Spectacle in several important ways
 
-While PLAE and Spectacle both contain large numbers of ocular-related scRNA datasets, they are structured differently. PLAE is built around the scEiaD database, which integrates all datasets together. This allows for queries to be constructed across studies and 
+While PLAE and Spectacle both contain large numbers of ocular-related scRNA datasets, they are structured differently. PLAE is built around the scEiaD database, which runs an extensive multi-stage pipeline to build and identify a high performing scVI-based eye model that is used to integrate all datasets together. This allows for queries to be constructed across studies and 
 
 The Spectacle web app contains access 87,305 single cell transcriptomes across four publications.
 
@@ -280,4 +295,4 @@ The Spectacle web app contains access 87,305 single cell transcriptomes across f
 
 ## 
 
-# Conclusion
+# Conclusion    
