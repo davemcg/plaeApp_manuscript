@@ -49,17 +49,19 @@ supTab_cap <- captioner("Supplemental Table")
 
 library(pool)
 library(RSQLite)
-meta_filter_v0 <- fst::read_fst("/Volumes/McGaughey_S/scEiaD/paper_data/2021_03_17_meta_filter.fst") %>% 
+meta_filter_v0 <- fst::read_fst("~/data/scEiaD/paper_data/2021_03_17_meta_filter.fst") %>% 
   mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
                                       TRUE ~ CellType_predict),
          CellType= case_when(CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
-                                      TRUE ~ CellType))
+                             TRUE ~ CellType))
 # remove eric bharti 2D/3D RPE
-meta_filter <- fst::read_fst("/Volumes/McGaughey_S/scEiaD_v3/2021_11_09_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
+meta_filter <- fst::read_fst("~/data/scEiaD_2022_02/2022_03_22_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
   mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
                                       TRUE ~ CellType_predict),
          CellType= case_when(CellType == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
-                                      TRUE ~ CellType))
+                             TRUE ~ CellType),  
+         Tissue = case_when(grepl('Iris', Tissue) ~ 'Iris',
+                            TRUE ~ Tissue))
 
 ```
 
@@ -70,7 +72,7 @@ meta_filter %>% group_by(Citation, PMID, study_accession) %>% summarise(Count = 
 ```
 
 # Figure 1 Distribution of Tissues and Cell Types in scEiaD
-```{r, fig.width=8, fig.height=5}
+```{r, fig.width=5.5, fig.height=5}
 # organ
 meta_filter <- meta_filter %>% mutate(organism = factor(organism, levels = meta_filter$organism %>% unique()))
 a <- meta_filter %>%
@@ -172,7 +174,7 @@ d <- meta_filter %>% filter(Organ == 'Eye') %>%
 
 a_aa_b <- plot_grid(a,aa,b, ncol = 1, align = 'hv', rel_heights = c(10, 1.5,3.5), labels = 'a')
 c_d <- plot_grid(c,d, rel_heights = c(2,10), ncol = 1, align= 'hv', axis = 'l',labels = c('b','c'))
-plot_grid(a_aa_b, c_d, ncol = 2, rel_widths = c(1,1.2))
+plot_grid(a_aa_b, c_d, ncol = 2, rel_widths = c(1,1.6))
 ```
 
 # Sup fig 1 
@@ -181,7 +183,7 @@ DecontX *in silico* ambient RNA contamination tool substantially removes Rhodops
 ```{r, fig.width=10, fig.height=12}
 source('src/make_exp_plot.R')
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  '~/data/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite')
-scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  '/Volumes/McGaughey_S/scEiaD_v3/MOARTABLES__anthology_limmaFALSE___6000-counts-universe-batch-scVIprojection-10-15-0.1-50-20.sqlite')
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  '~/data/scEiaD_2022_02/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20.sqlite')
 
 input <- list()
 input$exp_plot_groups <- c('organism')
@@ -314,10 +316,11 @@ For users interested in seeing how expression of a gene relates to study or othe
 While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. 
 
 ## Differential testing identifies many genes consistently enriched in various ocular cell types 
+```{r}
+scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% group_by(Base) %>% summarise(Count = n()) %>% data.frame()
+```
 
-## Ocular specific gene signatures
-
-## Fovea vs peripheral photoreceptor validation
+## Fovea vs peripheral photoreceptor multi-study validation
 
 Sanes proposed X genes (https://www.nature.com/articles/s41598-020-66092-9 --> Figure 9)
 
@@ -326,7 +329,7 @@ NR2E3, SLC24A1, PDE6H, GNAT1 for rods
 Also did RGC, Microglia, Astrocytes, Muller Glia
 
 
-## Design of scEiaD allows for projection of outside data
+## Projection of organoid data onto scEiaD demonstrates [SOMETHING]
 
 scEiaD is built using scvitool's scVI / scANVI batch correction tool. As part of the process a computational model of the reference datasets are built. This model is only a few mb in size and can be used on a modest computer to project private scRNA datasets onto it. This allows an ocular researcher several functions. First, the ability to check of quality control of an existing dataset by looking at the distribution of their cells overlapped with our labelled cell types. Second, in perturbation experiments, to identify unusual distributions of cells. Third, to leverage our extensive pre-labelled cell information to transfer cell type labels onto private data. 
 # Conclusion    
