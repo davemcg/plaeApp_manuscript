@@ -262,9 +262,9 @@ As we have four species in scEiaD (*Gallus gallus*, *Macaca fascicularis*, *Mus 
 
 Every study brought into scEiaD was hand curated to label biological sample, published paper ID (where available), organ, tissue (e.g. Cornea), source (iPSC based or tissue), single cell platform (e.g. 10Xv1 or DropSeq). We also, where possible, annotated retina region (e.g. fovea), sex, and age or developmental stage. To bring across individual cell type labels (e.g. Rod, Muller Glia), we wrote custom code for each study that made this table available to link to the individual cells. We curated two types of cell type labels: "CellType" and "PubCellType" where the former is our normalized cell types taken from the published labels. In this field we normalized names, for example changin "MG" to "Muller Glia" and also dropping more detailed cell type assignments like off and on bipolar cells for Bipolar Cells (as few studies went into this level). We did retain the original published (except for the broader name normalization) labels under PubCellType. 
 
-## Pan mouse and human non-ocular references
+## Differential gene testing
 
-The Tabula Muris and 
+Pseudobulk matrices were created for each organism with genes as the rows and study_accession - [test] as the columns; [test] is either cluster, CellType, or CellType_predict with the R package scater function XXX. Genes were removed which had zero expression across all cells. Columns were not retained if they were composed of fewer than 20 total cells. These pseudobulk matrices were used as the input for DESeq2 differential testing. The design of the test was "~study_accession + [test]" where, again, test is either cluster, CellType, or CellType_predict. This design sets the study_accession as the covariate, thus removing effects that are specific to a small number of studies. As the differential testing was done for each individual species, we aligned the separate result tables by the Ensembl gene ID to create a unified table. Values (e.g. pvalue) specific 
 
 ## scEiaD structure and web app optimization
 
@@ -313,13 +313,14 @@ PLAE has several ways to visualize the data: one being the 2D UMAP view which, s
 
 For users interested in seeing how expression of a gene relates to study or other covariates, the "Exp Plot" view displays expression by cell type, predicted cell type, or cluster. The values can then be split and colored by multiple covariates like study or organism. This allows a user to see whether a gene pattern is consistent across studies or species. We also offer a "Dot Plot" view which can display a large number of genes in a space efficient manner. This allows a users to see whether a set of genes has related (or not) expression patterns across multiple cell types. 
 
-While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can filter to only display data from certain metadata characteristics, like species or publication.
+While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can use powerful filtering options to only display data from certain metadata characteristics, like species or publication.
 
 ## Differential testing identifies thousands genes frequently enriched across various ocular cell types 
 ```{r}
 scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% group_by(Base) %>% summarise(Count = n()) %>% data.frame()
 ```
 
+To aid in in the analysis of ocular gene expression patterns we provide pre-computed differential tests run 
 ## Pan-study fovea vs peripheral photoreceptor identifies N genes consistently differentially expressed
 
 Sanes proposed X genes (https://www.nature.com/articles/s41598-020-66092-9 --> Figure 9)
