@@ -308,13 +308,11 @@ feature_table %>% flextable()
 
 ## PLAE differs from a complementary web app, Spectacle in several important ways
 
-While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers of ocular-related scRNA datasets, they are structured very differently. PLAE is built around the scEiaD database, which runs an extensive multi-stage pipeline to build and identify a high performing scVI-based eye model that is used to integrate all datasets together. This allows for gene queries to be constructed and analyzed across studies. In contrast, Spectacle, as of March 2022, is a compilation of study-level datasets and thus you cannot run queries across studies in Spectacle.
-
-There are a few other differences in between PLAE and Spectacle. First, there are no non-ocular datasets in Spectacle. Second, the cell types labels have not been harmonized. Third, as this resource uses Seurat objects, the app takes many seconds to load an individual dataset and many more to display the data.
+While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers of ocular-related scRNA datasets, they are structured differently. PLAE is built around the scEiaD database, which runs an extensive multi-stage pipeline to build and identify a high performing scVI-based eye model that is used to integrate all datasets together. This allows for gene queries to be constructed and analyzed across studies. In contrast, Spectacle, as of March 2022, is a compilation of study-level datasets and thus you cannot run queries across studies in Spectacle. Also, Spectacle contains no non-ocular dataset and the cell types labels have not been harmonized between studies. Finally, as this Spectacle uses Seurat objects, the app takes many seconds to load an individual dataset and many more to display the data.
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
-There are two interwoven reasons why PLAE is responsive, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this requires a large amount of disk storage, which makes local (on computer) usage onerous; the scEiaD v2022-03-21 sqlite database is abour 368 GB. Second, the visualizations in PLAE (e.g. the UMAP view) pull from the custom database directly and use highly optimized plotting packages (scattermore) to reduce drawing time. Starting from the loading page of Spectacle, it takes approximately six seconds to plot the cell type metadata for a few thousand cells across across a single study (tested on 2022-03-23). In the same amount of time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies. 
+There are two interwoven reasons why PLAE is responsive, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this requires a large amount of disk storage, which makes local (on computer) usage onerous; the scEiaD v2022-03-21 sqlite database is about 368 GB. Second, the visualizations in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) along with customized R plotting code to reduce drawing time. Starting from the loading page of Spectacle, it takes approximately six seconds to plot the cell type metadata for a few thousand cells across across a single study (tested on 2022-03-23). In the same amount of time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies. 
 
 ## Rich web-available visualizations 
 
@@ -326,7 +324,12 @@ While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage
 
 ## Differential testing identifies thousands genes frequently enriched across various ocular cell types 
 ```{r}
-scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% group_by(Base) %>% summarise(Count = n()) %>% data.frame()
+scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% 
+  group_by(Base) %>% 
+  summarise(Count = n()) %>% 
+  rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
+  as_tibble() %>% 
+  flextable()
 ```
 
 To aid in in the analysis of ocular gene expression patterns we provide pre-computed differential tests run 
