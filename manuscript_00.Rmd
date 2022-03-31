@@ -40,6 +40,9 @@ library(ggrepel)
 library(colorspace)
 library(flextable)
 library(captioner)
+library(glue)
+data_dir_vGiga <- '~/data/scEiaD/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 
 # setup caption-ing
 fig_cap <- captioner("Figure")
@@ -49,19 +52,26 @@ supTab_cap <- captioner("Supplemental Table")
 
 library(pool)
 library(RSQLite)
-meta_filter_v0 <- fst::read_fst("~/data/scEiaD/paper_data/2021_03_17_meta_filter.fst") %>% 
+meta_filter_v0 <- fst::read_fst(glue("{data_dir_vGiga}/paper_data/2021_03_17_meta_filter.fst")) %>% 
   mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
                                       TRUE ~ CellType_predict),
          CellType= case_when(CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
                              TRUE ~ CellType))
-# remove eric bharti 2D/3D RPE
-meta_filter <- fst::read_fst("~/data/scEiaD_2022_02/2022_03_22_meta_filter.fst") %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
+
+meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
   mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
                                       TRUE ~ CellType_predict),
          CellType= case_when(CellType == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
                              TRUE ~ CellType),  
          Tissue = case_when(grepl('Iris', Tissue) ~ 'Iris',
-                            TRUE ~ Tissue))
+                            TRUE ~ Tissue),
+         
+         Citation = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'Swamy VS, Fufa TD, Hufnagel RB, McGaughey DM Building the Mega Single Cell Transcriptome Ocular Meta-Atlas Gigascience 2021 Oct 13;10(10)',
+                              TRUE ~ Citation),
+         PMID = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ '34651173',
+                          TRUE ~ PMID),
+         study_accession = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'SRP329495',
+                                     TRUE ~ study_accession))
 
 ```
 
