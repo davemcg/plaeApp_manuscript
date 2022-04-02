@@ -41,8 +41,8 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-data_dir_vGiga <- '~/data/scEiaD/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/scEiaD/'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/scEiaD_2022_02/'
 
 # setup caption-ing
 fig_cap <- captioner("Figure")
@@ -195,8 +195,8 @@ DecontX *in silico* ambient RNA contamination tool substantially removes Rhodops
 
 ```{r, fig.width=10, fig.height=12}
 source('src/make_exp_plot.R')
-scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  '/Volumes/McGaughey_S/scEiaD/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite')
-scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  '/Volumes/McGaughey_S/scEiaD_2022/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20.sqlite')
+scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20.sqlite'))
 
 input <- list()
 input$exp_plot_groups <- c('organism')
@@ -251,7 +251,7 @@ the signal is biological, not technical.
 
 ## What we did
 
-Collated XX studies and processed 
+Collated `r meta_filter$study_accession %>% unique() %>% length()` studies across `r meta_filter$PMID %>% unique() %>% length()` publications, four species, and `r meta_filter$Tissue %>% unique() %>% length()` tissues. We hand-curated `r meta_filter$CellType %>% unique() %>% length()` cell types, totaling `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` cells and used those ground-truth labels as the basis for a machine learning-based algorithm which labels the remaining cells. Extensive quality control metrics were tuned and applied to remove lower quality cells. In the end, the single cell Eye in a Disk (scEiaD) database contains `r meta_filter %>% nrow()` cells and 1,509,179,347 non-zero gene/cell expression values. 
 
 # Methods
 
@@ -273,7 +273,7 @@ Every study brought into scEiaD was hand curated to label biological sample, pub
 
 ## Differential gene testing
 
-Pseudobulk matrices were created for each organism with genes as the rows and study_accession - [test] as the columns; [test] is either cluster, CellType, or CellType_predict with the R package scater function XXX. Genes were removed which had zero expression across all cells. Columns were not retained if they were composed of fewer than 20 total cells. These pseudobulk matrices were used as the input for DESeq2 differential testing. The design of the test was "~study_accession + [test]" where, again, test is either cluster, CellType, or CellType_predict. This design sets the study_accession as the covariate, thus removing effects that are specific to a small number of studies. As the differential testing was done for each individual species, we aligned the separate result tables by the Ensembl gene ID to create a unified table. Values (e.g. pvalue) specific 
+
 
 ## scEiaD structure and web app optimization
 
@@ -333,6 +333,7 @@ scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Pr
 ```
 
 To aid in in the analysis of ocular gene expression patterns we provide pre-computed differential tests run 
+
 ## Pan-study fovea vs peripheral photoreceptor identifies N genes consistently differentially expressed
 
 Sanes proposed X genes (https://www.nature.com/articles/s41598-020-66092-9 --> Figure 9)
