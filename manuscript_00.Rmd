@@ -53,21 +53,22 @@ supTab_cap <- captioner("Supplemental Table")
 library(pool)
 library(RSQLite)
 meta_filter_v0 <- fst::read_fst(glue("{data_dir_vGiga}/paper_data/2021_03_17_meta_filter.fst")) %>% 
-
+  
   mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
                                       TRUE ~ CellType_predict),
          CellType= case_when(CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
                              TRUE ~ CellType))
 
 meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
-
+  
   mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
                                       TRUE ~ CellType_predict),
          CellType= case_when(CellType == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
                              TRUE ~ CellType),  
          Tissue = case_when(grepl('Iris', Tissue) ~ 'Iris',
                             TRUE ~ Tissue),
-         
+         Tissue = case_when(grepl('RPE|Choroid', Tissue) ~ 'RPE-Choroid',
+                            TRUE ~ Tissue),
          Citation = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'Swamy VS, Fufa TD, Hufnagel RB, McGaughey DM Building the Mega Single Cell Transcriptome Ocular Meta-Atlas Gigascience 2021 Oct 13;10(10)',
                               TRUE ~ Citation),
          PMID = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ '34651173',
@@ -75,16 +76,78 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
          study_accession = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'SRP329495',
                                      TRUE ~ study_accession))
 
+scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20.sqlite'))
+
 ```
 
-# (sup?) Table 1
-Studies in scEiaD
-```{r}
-meta_filter %>% group_by(Citation, PMID, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable()
-```
 
-# Figure 1 Distribution of Tissues and Cell Types in scEiaD
-```{r, fig.width=6, fig.height=5}
+
+# Introduction
+
+## single cell RNA-seq allows for a higher resolution view of ocular transcriptomics
+
+Single cell RNA-sequencing dates back to . The first 
+
+## Many published ocular single cell RNA-seq atlases
+
+
+## Web atlases containing ocular data have substantial limitations
+
+Data difficult to access and cross comparisons impossible
+
+But important as seeing trends trends across different groups strongly demonstrates that 
+the signal is biological, not technical. 
+
+## What we did
+
+We published the ocular focused scEiaD v2021 resource in 2021, which was one of the first single cell meta-atlases. To broaden the usage of this powerful database, we restructured the data in a custom sqlite-based database and built a reactive web application around it. As many new studies were published since our last data build, we re-ran the scEiaD pipeline in March of 2022. In aggregate we have collated `r meta_filter$study_accession %>% unique() %>% length()` studies across `r meta_filter$PMID %>% unique() %>% length()` publications, four species, and `r meta_filter$Tissue %>% unique() %>% length()` tissues. We hand-curated `r meta_filter$CellType %>% unique() %>% length()` cell types, totaling `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` cells and used those ground-truth labels as the basis for a machine learning-based algorithm which labels the remaining cells. Extensive quality control metrics were tuned and applied to remove lower quality cells. In the end, the single cell Eye in a Disk (scEiaD) database contains `r meta_filter %>% nrow()` cells and 1,509,179,347 non-zero gene/cell expression values. 
+
+# Methods
+
+## scEiaD pipeline upgraded and the database re-built
+
+The scEiaD pipeline is structurally the same as in Swamy et al. [@swamy_building_2021]. Very briefly, we collect the raw fastq files and quantify with the kallisto / bustools system [@melsted_barcode_2019; @melsted_modular_2019]. The quantified counts are merged into one matrix that is used for downstream processing with scvitools to batch correct the data and Seurat for quality control, clustering, and 2D UMAP visualization. We use our previous xgboost-based machine learning approach to transfer cell type labels to unlabelled cells [@swamy_building_2021].  
+
+The following alterations were made: First, the cutoff to retain a cell was raised from 200 unique genes quantified to 300 Second, we use the DecontX algorithm [@yang_decontamination_2020] from the celda R package (version 1.9.2) to automatically remove ambient RNA contamination. Third, we altered the procedure for automatically aligning gene names across species (see below for details). Fourth, we use the scANVI (scvitools based) batch correction method, which leverages the known cell type labels in the batch correction process. 
+
+Two custom cutoffs for the minimum required number of unique genes identified per cell were used for the E12 chicken data and the cornea dataset (SRP362101) as an abnormally high number of cells were returned from our default value of 250 (????). We set the cutoffs for these studies to be 1000 and 800, respectively, as these values resulted in approximately the same number of cells being returned as the authors reported in their papers. 
+
+## Cross species gene alignment
+
+As we have four species in scEiaD (*Gallus gallus*, *Macaca fascicularis*, *Mus musculus*, and *Homo sapiens*) that we unify, we must identify shared genes. We found homologs/orthologs by pulling from BioMart database "Ensembl Genes 105" and using *Homo sapiens* as the reference. We then selected orthologous gene names from *Gallus gallus*, *Macaca fascicularis*, and *Mus Musculus*. This generates a table linked by Ensembl gene IDs and gene names. We then use a full join on non-duplicated Ensembl IDs between mouse and human. As we noticed a small number of gene names failed to be linked in this manner we ran another join on the remaining non-aligned genes, using gene name. This procedure gave us 17,769 shared human and mouse genes. To align the other species we again joined on Ensembl gene ID, removing genes where one chicken or macaque gene aligned to multiple human/mouse genes. In cases where multiple chicken or macaque genes aligned to one human/mouse gene, then we aggregated the counts by sum. In cases where there was no corresponding chicken or macaque gene, we filled in zeros. After these steps we had, as expected, 17,769 genes. 
+
+## Metadata curation
+
+Every study brought into scEiaD was hand curated to identify unique biological samples, published paper ID (where available), organ, tissue (e.g. Cornea), source (iPSC based or tissue), single cell platform (e.g. 10Xv2, DropSeq, etc.). We also, where possible, annotated retina region (e.g. fovea), sex, and age or developmental stage. To import individual cell type labels (e.g. Rod, Muller Glia), we wrote custom code for each study that made this table available to link their cell type assignments back to the matching barcoded cell. We curated two types of cell type labels: "CellType" and "SubCellType" where the former is our normalized cell types taken from the published labels. We normalized names for CellType, for example changing "MG" to "Muller Glia" and also dropping more detailed cell type assignments like off and on bipolar cells for Bipolar Cells (as few studies went into this level). We did retain the original published (except for the broader name normalization) labels under SubCellType. 
+
+## Differential gene testing
+
+
+
+## scEiaD structure and web app optimization
+
+The web app at plae.nei.nih.gov can display gene expression in only a few seconds across over a million cells. This speed is only possible due to custom data structures to optimize for data query efficiency. Like eyeIntegration's EiaD database, scEiaD is a sqlite database with tables for the core categories. This allows the app to initialize in about 30 seconds on a cloud server with memory usage under 8 GB. For the gene by cell expression matrix, the data was transformed into a "long" format where there are three columns: Gene, Cell Barcode, and Gene Count Value. This allows for cell - gene level queries to be completed, again with minimal memory usage, in under 0.5 seconds. To generate the aggregated information (in the Dot Plot, Expression Plot, and tables) we pre-calculated all queries by running a dplyr "group by" operation on all column fields. On user given query, the data is further aggregated to level request. This allows for complicated queries to complete in seconds rather than minutes. 
+
+## Data reproducibility
+
+The codebase for scEiaD is available at github.com/davemcg/scEiaD; the commit corresponding to this manuscript is XXXXXXX. There are three relevant Snakemake pipelines which were used to create scEiaD: SnakeQUANT, which was used to quantify the gene / cell expression from the raw fastq files, SnakePOP, which runs the multi-parameter integration methods, and SnakeSCEIAD, which takes the optimal parameters from SnakePOP to build the scEiaD sqlite database for the app. 
+
+# Results
+
+## New studies and improvements to the scEiaD database
+
+Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types [@swamy_building_2021]. We updated the scEiaD resource for the PLAE v0.90 web app in six important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset and two more cornea datasets to enhance coverage across the eye. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (`r supFig_cap(name = 'decontX', display = 'cite')`). Fifth, we increased the cell retention cutoff for detected unique transcripts per cell from 200 to 300 (CHECK THIS), to improve the database quality. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris project to more easily provide non eye cell type comparisons.
+
+After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we make the first data table on the loading page of plae.nei.nih.gov list each of these studies along with a direct link to their citation, where possible. 
+
+```{r scEiaD_data_overview, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=scEiaD_data_overview_cap}
+
+num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
+num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
+nun3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
+scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types."))
+
 # organ
 meta_filter <- meta_filter %>% mutate(organism = factor(organism, levels = meta_filter$organism %>% unique()))
 a <- meta_filter %>%
@@ -190,108 +253,14 @@ c_d <- plot_grid(c,d, rel_heights = c(3,10), ncol = 1, align= 'hv', axis = 'l',l
 plot_grid(a_aa_b, c_d, ncol = 2, rel_widths = c(1,1.6))
 ```
 
-# Sup fig 1 
-DecontX *in silico* ambient RNA contamination tool substantially removes Rhodopsin expression in non-rod cells while retaining high expression rods. First shown (a) is Rhodopsin expression across the scEiaD v0 dataset, without DecontX optimization. Note Rhodopsin expression is noticeable in many cell types beyond the rods. Next (b) is the scEiaD v1 dataset with DecontX optimization. Rhodopsin is nearly exclusively expressed in labelled rod cells. Despite the computational ambient RNA removal, Rhodopsin expression remains high in the Rods. 
 
-```{r, fig.width=10, fig.height=12}
-source('src/make_exp_plot.R')
-scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
-scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20.sqlite'))
+## scRNA web resources containing ocular data
 
-input <- list()
-input$exp_plot_groups <- c('organism')
-input$exp_plot_facet <- c('CellType_predict')
-input$exp_plot_genes <- c('RHO (ENSG00000163914)')
-input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
-input$exp_plot_col_num <- 16
-input$exp_filter_min_cell_number <- 50
+Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources_cap', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingress-ed a large number of published single cell datasets The UCSC Cell Browser has around 62 thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse and thus the ocular data present, though relatively small (at around 10 thousand), can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource, which has aggregated protein labels (????) information has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has selected a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the metadata, re-processing of the data from the raw sequence, and, most crucially, integrating the independent studies to deliver cross study comparisons. 
 
-v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
-v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
-input$exp_filter_min_cell_number <- 1000
-v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellType_predict %in% unique(meta_filter_v0$CellType_predict)))
-plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
-```
-<!-- ```{r, fig.height=5, fig.width=3} -->
-<!-- # Distribution of ML Retina Cell Types Between Mouse and Human in Pan-Retina Studies -->
-<!-- Drop this figure? -->
-<!-- Yes -->
+```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=web_resources_cap}
 
-<!-- pan_retina_studies <- c('SRP255195','E-MTAB-7316','SRP151023','SRP222001','SRP222958','SRP194595','SRP223254','SRP050054','SRP269634','SRP269635','SRP158528', 'SRP257758','SRP212788') -->
-
-
-<!-- meta_filter %>%  -->
-<!--   filter(organism %in% c('Mus musculus','Homo sapiens'),  -->
-<!--          Stage == 'Mature',  -->
-<!--          study_accession %in% pan_retina_studies,  -->
-<!--          grepl('Amacr|Bipol|Cone|Epithel|Endoth|Horizon|Muller|Pericy|Ganglion|Rod', CellType_predict)) %>%  -->
-<!--   group_by(study_accession, CellType_predict) %>%  -->
-<!--   summarise(Count = n()) %>% mutate(Percentage = 100 * (Count / sum(Count)))  %>%  -->
-<!--   left_join(meta_filter %>% select(study_accession, Platform, organism) %>% unique()) %>%  -->
-<!--   ggplot(aes(x=organism, y=Percentage)) +  -->
-<!--   geom_boxplot() +  -->
-<!--   coord_flip() +  -->
-<!--   ggbeeswarm::geom_quasirandom(aes(color=study_accession)) +  -->
-<!--   facet_wrap(~CellType_predict, ncol = 1) +  -->
-<!--   cowplot::theme_cowplot() -->
-<!-- ``` -->
-
-# Introduction
-
-## Many published ocular atlases
-
-## Web atlases containing ocular data have substantial limitations
-
-There are several web app resources for querying gene expression across ocular cell types (table 1). 
-
-Data difficult to access and cross comparisons impossible
-
-But important as seeing trends trends across different groups strongly demonstrates that 
-the signal is biological, not technical. 
-
-## What we did
-
-Collated `r meta_filter$study_accession %>% unique() %>% length()` studies across `r meta_filter$PMID %>% unique() %>% length()` publications, four species, and `r meta_filter$Tissue %>% unique() %>% length()` tissues. We hand-curated `r meta_filter$CellType %>% unique() %>% length()` cell types, totaling `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` cells and used those ground-truth labels as the basis for a machine learning-based algorithm which labels the remaining cells. Extensive quality control metrics were tuned and applied to remove lower quality cells. In the end, the single cell Eye in a Disk (scEiaD) database contains `r meta_filter %>% nrow()` cells and 1,509,179,347 non-zero gene/cell expression values. 
-
-# Methods
-
-## scEiaD re-created and pipeline updated
-
-The scEiaD pipeline is structurally the same as in Swamy et al. [@swamy_building_2021]. Very briefly, we collect the raw fastq files and quantify with the kallisto / bustools system [@melsted_barcode_2019; @melsted_modular_2019]. The quantified counts are merged into one matrix that is used for downstream processing with scvitools to batch correct the data and Seurat for quality control, clustering, and 2D UMAP visualization. We use our previous xgboost-based machine learning approach to transfer cell type labels to unlabelled cells [@swamy_building_2021].  
-
-The following alterations were made: First, the cutoff to retain a cell was raised from 200 unique genes quantified to 300 Second, we use the DecontX algorithm [@yang_decontamination_2020] from the celda R package (version 1.9.2) to automatically remove ambient RNA contamination. Third, we altered the procedure for automatically aligning gene names across species (see below for details). Fourth, we use the scANVI (scvitools based) batch correction method, which leverages the known cell type labels in the batch correction process. 
-
-Two custom cutoffs for number of unique genes identified were used for the E12 chicken data and the cornea dataset (SRP362101) as an abnormally high number of cells were returned from our pipeline. We set the cutoffs for these studies to be 1000 and 800, respectively, as these values resulted in approximately the same number of cells being returned as the authors reported in their papers. 
-
-## Cross species gene alignment
-
-As we have four species in scEiaD (*Gallus gallus*, *Macaca fascicularis*, *Mus musculus*, and *Homo sapiens*) that we unify, we must align shared genes. We found homologs/orthologs by pulling from BioMart database "Ensembl Genes 105" and using *Homo sapiens* as the reference. We then selected orthologous gene names from *Gallus gallus*, *Macaca fascicularis*, and *Mus Musculus*. This generates a table linked by Ensembl gene IDs and gene names. We then use a full join on non-duplicated Ensembl IDs between mouse and human. As we noticed a small number of gene names failed to be linked in this manner we ran another join on the remaining non-aligned genes, using gene name. This procedure gave us 17,769 shared human and mouse genes. To align the other species we again joined on Ensembl gene ID, removing genes where one chicken or macaque gene aligned to multiple human/mouse genes. In cases where multiple chicken or macaque genes aligned to one human/mouse gene, then we aggregated the counts by sum. In cases where there was no corresponding chicken or macaque gene, we filled in zeros. After these steps we had, as expected, 17,769 genes. 
-
-## Metadata curation
-
-Every study brought into scEiaD was hand curated to label biological sample, published paper ID (where available), organ, tissue (e.g. Cornea), source (iPSC based or tissue), single cell platform (e.g. 10Xv1 or DropSeq). We also, where possible, annotated retina region (e.g. fovea), sex, and age or developmental stage. To bring across individual cell type labels (e.g. Rod, Muller Glia), we wrote custom code for each study that made this table available to link to the individual cells. We curated two types of cell type labels: "CellType" and "PubCellType" where the former is our normalized cell types taken from the published labels. In this field we normalized names, for example changin "MG" to "Muller Glia" and also dropping more detailed cell type assignments like off and on bipolar cells for Bipolar Cells (as few studies went into this level). We did retain the original published (except for the broader name normalization) labels under PubCellType. 
-
-## Differential gene testing
-
-
-
-## scEiaD structure and web app optimization
-
-The web app at plae.nei.nih.gov can display million plus cell level gene expression in only a few seconds. This speed is only possible due to custom data structures to optimize for data querying. Like eyeIntegration's EiaD database, scEiaD is a sqlite database with tables for the core categories. This allows for app start up to complete in under 30 seconds on a modestly performant cloud server with memory usage under 8 GB. For the gene by cell expression matrix, the data was transformed into a "long" format where there are three columns: Gene, Cell Barcode, and Gene Count Value. This allows for cell - gene level queries to be completed, again with minimal memory usage, in under 0.5 seconds. To generate the aggregated information (in the Dot Plot, Expression Plot, and tables) we pre-calculated all queries by running a dplyr "group by" operation on all column fields. On user given query, the data is further aggregated to level request. This allows for complicated queries to complete in seconds rather than minutes. 
-
-## Data reproducibility
-
-The codebase for scEiaD is available at github.com/davemcg/scEiaD. There are three relevent Snakemake pipelines which were used to create scEiaD: SnakeQUANT, which was used to quantify the gene / cell expression from the raw fastq files, SnakePOP, which runs the multi-parameter integration methods, and SnakeSCEIAD, which takes the optimal parameters from SnakePOP to build the scEiaD sqlite database for the app. 
-
-# Results
-
-## New studies and improvements to the scEiaD database
-Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types [@swamy_building_2021]. We updated the scEiaD resource for the PLAE v0.90 web app in six important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset and two more cornea datasets to enhance coverage across the eye. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (sup fig XX). Fifth, we increased the cell retention cutoff for detected unique transcripts per cell from 200 to 300, which reduces the number of cells that pass QC but improves the quality. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris dataset to more easily provide non eye cell type comparisons.
-
-After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (Fig 1).
-
-# Comparison of PLAE to "pan" scRNA web apps containing ocular data
-```{r}
+tab_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
 
 feature_table <- rbind(
   c('PLAE','Yes','Yes', 'Yes', '1136 ', 'https://plae.nei.nih.gov'),
@@ -308,23 +277,30 @@ feature_table %>% flextable()
 
 ## PLAE differs from a complementary web app, Spectacle in several important ways
 
-While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers of ocular-related scRNA datasets, they are structured differently. PLAE is built around the scEiaD database, which runs an extensive multi-stage pipeline to build and identify a high performing scVI-based eye model that is used to integrate all datasets together. This allows for gene queries to be constructed and analyzed across studies. In contrast, Spectacle, as of March 2022, is a compilation of study-level datasets and thus you cannot run queries across studies in Spectacle. Also, Spectacle contains no non-ocular dataset and the cell types labels have not been harmonized between studies. Finally, as this Spectacle uses Seurat objects, the app takes many seconds to load an individual dataset and many more to display the data.
+While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers of ocular-related scRNA datasets, they are structured differently [@noauthor_spectacle_nodate]. PLAE is built around the scEiaD database, which runs an extensive multi-stage pipeline to build and identify a high performing scVI-based eye model that is used to integrate all datasets together [@swamy_building_2021]. This allows for gene queries to be constructed and analyzed across studies. In contrast, Spectacle, as of March 2022, is a compilation of study-level datasets and thus you cannot run queries across studies in Spectacle. Furthermore, Spectacle contains no non-ocular dataset and the cell types labels have not been harmonized between studies. Finally, as this Spectacle uses Seurat objects, the app takes many seconds to load an individual dataset and many more to display the data.
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
-There are two interwoven reasons why PLAE is responsive, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this requires a large amount of disk storage, which makes local (on computer) usage onerous; the scEiaD v2022-03-21 sqlite database is about 368 GB. Second, the visualizations in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) along with customized R plotting code to reduce drawing time. Starting from the loading page of Spectacle, it takes approximately six seconds to plot the cell type metadata for a few thousand cells across across a single study (tested on 2022-03-23). In the same amount of time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies. 
+There are two interwoven reasons why PLAE is fast, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this requires a large amount of disk storage, which makes local (on computer) usage onerous; the scEiaD v2022-03-22 sqlite database is about 368 GB. Second, the visualization code in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) to reduce drawing time. Starting from the loading page of Spectacle, it takes approximately six seconds to plot the cell type metadata for a few thousand cells across across a single study (tested on 2022-03-23). In the same amount of time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies. 
 
 ## Rich web-available visualizations 
 
-PLAE has several ways to visualize the data: one being the 2D UMAP view which, side-by-side, shows gene - cell expression and metadata - cell values. So thus a user can see Crx expression across over a million cells and separately see cell type labels for those same million cells. The 2D UMAP view also has a zoom function, so a user can focus on a subset of cells. Clicking on the plot will show metadata for the five nearest cells to the click, which is useful to seeing what kind of cells are present in a small area. 
+PLAE has several ways to visualize the data: one being the 2D UMAP view which, side-by-side, shows gene - cell expression and metadata - cell values. So thus a user can see Crx expression across over a million cells and separately see cell type labels for those same million cells. The 2D UMAP view also has a zoom function, so a user can focus on a subset of cells. Clicking on the plot will show metadata for the five nearest cells to the click, which is useful to seeing what kind of cells are present in a small area (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`a). 
 
-For users interested in seeing how expression of a gene relates to study or other covariates, the "Exp Plot" view displays expression by cell type, predicted cell type, or cluster. The values can then be split and colored by multiple covariates like study or organism. This allows a user to see whether a gene pattern is consistent across studies or species. We also offer a "Dot Plot" view which can display a large number of genes in a space efficient manner. This allows a users to see whether a set of genes has related (or not) expression patterns across multiple cell types. 
+For users interested in seeing how expression of a gene relates to study or other covariates, the "Exp Plot" view displays expression by cell type, predicted cell type, or cluster. The values can then be split and colored by multiple covariates like study or organism. This allows a user to see whether a gene pattern is consistent across studies or species. We also offer a "Dot Plot" view which can display a large number of genes in a space efficient manner. This allows a users to see whether a set of genes has related (or not) expression patterns across multiple cell types (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`b and c). 
 
-While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can use powerful filtering options to only display data from certain metadata characteristics, like species or publication.
+While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can use powerful filtering options to only display data from certain metadata characteristics, like species or publication (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`d).
+
+```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
+
+
+```
 
 ## Differential testing identifies thousands genes frequently enriched across various ocular cell types 
 ```{r}
-scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% 
+scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% 
+  filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% 
+  filter(Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% 
   group_by(Base) %>% 
   summarise(Count = n()) %>% 
   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
@@ -332,9 +308,12 @@ scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% filter(Group == 'CellType (Pr
   flextable()
 ```
 
+
 To aid in in the analysis of ocular gene expression patterns we provide pre-computed differential tests run 
 
 ## Pan-study fovea vs peripheral photoreceptor identifies N genes consistently differentially expressed
+
+To identify 
 
 Sanes proposed X genes (https://www.nature.com/articles/s41598-020-66092-9 --> Figure 9)
 
@@ -345,5 +324,44 @@ Also did RGC, Microglia, Astrocytes, Muller Glia
 
 ## Projection of organoid data onto scEiaD demonstrates [SOMETHING]
 
-scEiaD is built using scvitool's scVI / scANVI batch correction tool. As part of the process a computational model of the reference datasets are built. This model is only a few mb in size and can be used on a modest computer to project private scRNA datasets onto it. This allows an ocular researcher several functions. First, the ability to check of quality control of an existing dataset by looking at the distribution of their cells overlapped with our labelled cell types. Second, in perturbation experiments, to identify unusual distributions of cells. Third, to leverage our extensive pre-labelled cell information to transfer cell type labels onto private data. 
-# Conclusion    
+scEiaD is built using scvi-tool's scANVI batch correction tool. As part of the process a computational transcriptome model of the reference datasets are built. This model is only a few mb in size and can be used on a modest computer to project private scRNA datasets onto it. This allows an ocular researcher several important functionalities. First, the ability to check the quality control of an existing dataset by looking at the distribution of their cells overlapped with our labelled cell types. Second, in perturbation experiments, to identify unusual distributions of cells. Third, to leverage our extensive pre-labelled cell information to transfer cell type labels onto private data. 
+
+We demonstrate some of these possibilities by projecting two organoid datasets from X and Y. 
+
+# Conclusions
+
+## PLAE provides quick access to over one million transcriptomes across 35 studies
+
+## Projection of outside data onto scEiaD allows for ... (check lung atlas paper)
+
+## 
+
+
+
+# Supplementary Figures and Tables
+
+
+```{r decontX, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=decontX_cap}
+decontX_cap <- supFig_cap(name='decontX', caption = 'DecontX *in silico* ambient RNA contamination tool substantially removes Rhodopsin expression in non-rod cells while retaining high expression rods. First shown (a) is Rhodopsin expression across the scEiaD v0 dataset, without DecontX optimization. Note Rhodopsin expression is noticeable in many cell types beyond the rods. Next (b) is the scEiaD v1 dataset with DecontX optimization. Rhodopsin is nearly exclusively expressed in labelled rod cells. Despite the computational ambient RNA removal, Rhodopsin expression remains high in the Rods.')
+source('src/make_exp_plot.R')
+
+input <- list()
+input$exp_plot_groups <- c('organism')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- c('RHO (ENSG00000163914)')
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+
+v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
+v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+input$exp_filter_min_cell_number <- 1000
+v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellType_predict %in% unique(meta_filter_v0$CellType_predict)))
+plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
+```
+
+```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=studies_table_cap}
+studies_table_cap <- supTab_cap(name = 'studies_table', caption = 'Studies, tissues, and number of cells across scEiaD')
+
+meta_filter %>% group_by(Citation, PMID, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable()
+```
