@@ -77,7 +77,7 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
                                      TRUE ~ study_accession))
 
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
-scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20.sqlite'))
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
 ```
 
@@ -145,7 +145,7 @@ After the dataset and quality control updates the scEiaD v2022-03-21 dataset now
 
 num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
-nun3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
+num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
 scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types."))
 
 # organ
@@ -298,14 +298,67 @@ While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage
 
 ## Differential testing identifies thousands genes frequently enriched across various ocular cell types 
 ```{r}
-scEiaD_2020_v01 %>% tbl('wilcox_diff_testing') %>% 
-  filter(Group == 'CellType (Predict)', FDR < 1e-5, mean_auc > 0.7 ) %>% 
-  filter(Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% 
-  group_by(Base) %>% 
+diff_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
+  filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) > 2) %>% 
+  collect() %>% 
+  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) 
+
+diff_tab %>% 
+  group_by(Base, Organism) %>% 
   summarise(Count = n()) %>% 
   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
+  pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
   as_tibble() %>% 
   flextable()
+```
+
+
+```{r}
+# top 100 genes in each organism/base category
+diff_tab %>% 
+  
+  group_by(Base, Organism) %>% 
+  top_n(., 100, -padj) %>% 
+  arrange(Base, Organism) %>% 
+  relocate(Base, Organism) %>% 
+  select(-Against, -Group)
+```
+
+```{r}
+# consistently diff genes
+consistent <- diff_tab %>% 
+  group_by(Gene, Base)  %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 1) %>% 
+  mutate(k = paste(Gene, Base, sep = '_'))
+
+diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>% 
+  filter(k %in% consistent$k) %>% 
+  group_by(Base, Organism) %>% 
+  summarise(Count = n()) %>% 
+  rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
+  pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
+  as_tibble() %>% 
+  flextable()
+
+```
+
+```{r}
+# flip flop diff genes
+down_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
+  filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) < -2) %>% 
+  collect() %>% 
+  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) 
+
+diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>% 
+  filter(k %in% consistent$k) %>% 
+  group_by(Base, Organism) %>% 
+  summarise(Count = n()) %>% 
+  rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
+  pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
+  as_tibble() %>% 
+  flextable()
+
 ```
 
 
