@@ -41,8 +41,8 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-data_dir_vGiga <- '/Volumes/McGaughey_S/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 
 # setup caption-ing
 fig_cap <- captioner("Figure")
@@ -341,6 +341,7 @@ diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>%
   as_tibble() %>% 
   flextable()
 
+
 ```
 
 ```{r}
@@ -348,17 +349,25 @@ diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>%
 down_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
   filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) < -2) %>% 
   collect() %>% 
-  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) 
+  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% mutate(k = paste(Gene, Base, sep = '_'))
 
 diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>% 
-  filter(k %in% consistent$k) %>% 
-  group_by(Base, Organism) %>% 
-  summarise(Count = n()) %>% 
-  rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
-  pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
-  as_tibble() %>% 
-  flextable()
+  filter(k %in% down_tab$k, Base %in% c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )) %>% 
+  arrange(padj)
+```
 
+```{r diff_difff_exp_genes, fig.height = 3, fig.width = 8, echo = F, message = F}
+input <- list()
+input$exp_plot_groups <- c('organism')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- c('GNAT2 (ENSG00000134183)')
+input$exp_filter_cat <- 'CellType_predict'
+input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+
+make_exp_plot(input, scEiaD_2020_v01, meta_filter)
 ```
 
 
