@@ -41,8 +41,8 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
 
 # setup caption-ing
 fig_cap <- captioner("Figure")
@@ -296,12 +296,16 @@ While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage
 
 ```
 
-## Differential testing identifies thousands genes frequently enriched across various ocular cell types 
+## Differential testing identifies thousands genes enriched across various ocular cell types
+
+We used a "pseudo-bulk" based approach wherein the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The creates a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was constructured, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). We fin
 ```{r}
-diff_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
+diff_tab_big <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
   filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) > 2) %>% 
-  collect() %>% 
-  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) 
+  collect() 
+
+diff_tab <- diff_tab_big %>% 
+  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
 
 diff_tab %>% 
   group_by(Base, Organism) %>% 
@@ -312,6 +316,15 @@ diff_tab %>%
   flextable()
 ```
 
+Many of these genes can be differentially expressed in more than one cell type. To identify genes that consistently differentially expressed we can use a more specific test. We define a consistent gene that is 
+
+```{r}
+diff_tab_big %>% 
+  filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
+  group_by(Gene, Base, Organism) %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 1) %>% arrange(-Count)
+```
 
 ```{r}
 # top 100 genes in each organism/base category
@@ -354,13 +367,21 @@ down_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>%
 diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>% 
   filter(k %in% down_tab$k, Base %in% c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )) %>% 
   arrange(padj)
-```
 
+diff_tab_big %>% 
+    filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
+    group_by(Gene, Base, Organism) %>% 
+    summarise(Count = n()) %>% 
+    filter(Count > 8, Base == 'Rod') %>% arrange(-Count)
+```
+ 
 ```{r diff_difff_exp_genes, fig.height = 3, fig.width = 8, echo = F, message = F}
+source('src/make_exp_plot.R')
+
 input <- list()
 input$exp_plot_groups <- c('organism')
 input$exp_plot_facet <- c('CellType_predict')
-input$exp_plot_genes <- c('GNAT2 (ENSG00000134183)')
+input$exp_plot_genes <- c('SCRG1 (ENSG00000164106)')
 input$exp_filter_cat <- 'CellType_predict'
 input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
 input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
