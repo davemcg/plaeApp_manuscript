@@ -41,9 +41,10 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-
+# data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+# data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -300,9 +301,20 @@ While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage
 
 We used a "pseudo-bulk" based approach wherein the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The creates a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was constructured, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). We fin
 ```{r}
+# fix  occasional NA
+# data made from src/ensdb.R
+hs_v86_tab <- read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz')
+mm_v79_tab <- read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz')
+hs_mm <- bind_rows(hs_v86_tab, mm_v79_tab)
+
 diff_tab_big <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
   filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) > 2) %>% 
   collect() 
+
+diff_tab_big2 <- diff_tab_big %>% 
+  separate(Gene, into = c('Symbol', 'ID'), sep = ' ') %>% 
+  mutate(ID = gsub('\\(|\\)', '', ID)) %>% 
+  filter(Symbol == '-' | Symbol == 'NA')
 
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
@@ -316,14 +328,22 @@ diff_tab %>%
   flextable()
 ```
 
-Many of these genes can be differentially expressed in more than one cell type. To identify genes that consistently differentially expressed we can use a more specific test. We define a consistent gene that is 
+Many of these genes can be differentially expressed in more than one cell type. To identify genes that are consistently differentially expressed we can use a more specific test. We define a consistent gene that is 
 
 ```{r}
+
+
+spec_diff <- diff_tab_big %>% 
+    filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
+    group_by(Gene, Organism, Base) %>% 
+    summarise(Count = n()) %>% 
+    filter(Count > 1) %>% summarise(Count = n()) %>% filter(Count < 3) %>% mutate(go = paste(Gene, '___', Organism, sep = '')) %>% pull(go)
+
 diff_tab_big %>% 
-  filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
-  group_by(Gene, Base, Organism) %>% 
-  summarise(Count = n()) %>% 
-  filter(Count > 1) %>% arrange(-Count)
+    filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
+    group_by(Gene, Organism, Base) %>% 
+    summarise(Count = n()) %>% 
+    filter(Count > 1) %>% mutate(go = paste(Gene, '___', Organism, sep = '')) %>% filter(go %in% (spec_diff))  %>% select(-go) %>% ungroup() %>% group_by(Organism, Base) %>% slice_max(n = 10, order_by = Count) %>% filter(Base == 'Rod')
 ```
 
 ```{r}
