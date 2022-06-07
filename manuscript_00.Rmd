@@ -309,12 +309,24 @@ hs_mm <- bind_rows(hs_v86_tab, mm_v79_tab)
 
 diff_tab_big <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
   filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) > 2) %>% 
-  collect() 
+  collect() %>% 
+  separate(Gene, into = c('Symbol', 'ID'), sep = ' ') %>% 
+  mutate(ID = gsub('\\(|\\)', '', ID))
 
 diff_tab_big2 <- diff_tab_big %>% 
-  separate(Gene, into = c('Symbol', 'ID'), sep = ' ') %>% 
-  mutate(ID = gsub('\\(|\\)', '', ID)) %>% 
   filter(Symbol == '-' | Symbol == 'NA')
+
+diff_tab_big2 <- 
+  diff_tab_big2 %>% 
+  left_join(hs_mm, by = c('ID' = 'GENEID')) %>% 
+  select(-Symbol) %>% 
+  rename(Symbol = SYMBOL) %>% 
+  relocate(Symbol)
+
+diff_tab_big <- bind_rows(
+  diff_tab_big %>% filter(!Symbol %in% c('-', 'NA')),
+  diff_tab_big2
+)
 
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
@@ -331,19 +343,23 @@ diff_tab %>%
 Many of these genes can be differentially expressed in more than one cell type. To identify genes that are consistently differentially expressed we can use a more specific test. We define a consistent gene that is 
 
 ```{r}
-
-
 spec_diff <- diff_tab_big %>% 
-    filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
-    group_by(Gene, Organism, Base) %>% 
-    summarise(Count = n()) %>% 
-    filter(Count > 1) %>% summarise(Count = n()) %>% filter(Count < 3) %>% mutate(go = paste(Gene, '___', Organism, sep = '')) %>% pull(go)
+  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
+  group_by(Symbol, Organism, Base) %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 1) %>% summarise(Count = n()) %>% filter(Count < 3) %>% mutate(go = paste(Symbol, '___', Organism, sep = '')) %>% pull(go)
 
 diff_tab_big %>% 
-    filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
-    group_by(Gene, Organism, Base) %>% 
-    summarise(Count = n()) %>% 
-    filter(Count > 1) %>% mutate(go = paste(Gene, '___', Organism, sep = '')) %>% filter(go %in% (spec_diff))  %>% select(-go) %>% ungroup() %>% group_by(Organism, Base) %>% slice_max(n = 10, order_by = Count) %>% filter(Base == 'Rod')
+  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
+  group_by(Symbol, Organism, Base) %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 1) %>% mutate(go = paste(Symbol, '___', Organism, sep = '')) %>% 
+  filter(go %in% (spec_diff))  %>% 
+  select(-go) %>% 
+  ungroup() %>% 
+  group_by(Organism, Base) %>% 
+  slice_max(n = 10, order_by = Count) %>% 
+  filter(Base == 'Rod')
 ```
 
 ```{r}
@@ -360,12 +376,12 @@ diff_tab %>%
 ```{r}
 # consistently diff genes
 consistent <- diff_tab %>% 
-  group_by(Gene, Base)  %>% 
+  group_by(Symbol, Base)  %>% 
   summarise(Count = n()) %>% 
   filter(Count > 1) %>% 
-  mutate(k = paste(Gene, Base, sep = '_'))
+  mutate(k = paste(Symbol, Base, sep = '_'))
 
-diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>% 
+diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>% 
   filter(k %in% consistent$k) %>% 
   group_by(Base, Organism) %>% 
   summarise(Count = n()) %>% 
@@ -382,19 +398,19 @@ diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>%
 down_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
   filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) < -2) %>% 
   collect() %>% 
-  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% mutate(k = paste(Gene, Base, sep = '_'))
+  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% mutate(k = paste(Symbol, Base, sep = '_'))
 
-diff_tab %>% mutate(k = paste(Gene, Base, sep = '_')) %>% 
+diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>% 
   filter(k %in% down_tab$k, Base %in% c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )) %>% 
   arrange(padj)
 
 diff_tab_big %>% 
-    filter(Gene %in% diff_tab$Gene) %>% # only retain diff genes across "All"
-    group_by(Gene, Base, Organism) %>% 
-    summarise(Count = n()) %>% 
-    filter(Count > 8, Base == 'Rod') %>% arrange(-Count)
+  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
+  group_by(Symbol, Base, Organism) %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 8, Base == 'Rod') %>% arrange(-Count)
 ```
- 
+
 ```{r diff_difff_exp_genes, fig.height = 3, fig.width = 8, echo = F, message = F}
 source('src/make_exp_plot.R')
 
