@@ -304,30 +304,7 @@ We used a "pseudo bulk" based approach wherein the counts for a category (CellTy
 ```{r}
 # fix  occasional NA
 # data made from src/ensdb.R
-hs_v86_tab <- read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz')
-mm_v79_tab <- read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz')
-hs_mm <- bind_rows(hs_v86_tab, mm_v79_tab)
-
-diff_tab_big <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
-  filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) > 2) %>% 
-  collect() %>% 
-  separate(Gene, into = c('Symbol', 'ID'), sep = ' ') %>% 
-  mutate(ID = gsub('\\(|\\)', '', ID))
-
-diff_tab_big2 <- diff_tab_big %>% 
-  filter(Symbol == '-' | Symbol == 'NA')
-
-diff_tab_big2 <- 
-  diff_tab_big2 %>% 
-  left_join(hs_mm, by = c('ID' = 'GENEID')) %>% 
-  select(-Symbol) %>% 
-  rename(Symbol = SYMBOL) %>% 
-  relocate(Symbol)
-
-diff_tab_big <- bind_rows(
-  diff_tab_big %>% filter(!Symbol %in% c('-', 'NA')),
-  diff_tab_big2
-)
+diff_tab_big <- read_tsv('data/diff_tab_big.tsv.gz')
 
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
@@ -338,6 +315,20 @@ diff_tab %>%
   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
   pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
   as_tibble() %>% 
+  flextable()
+
+# number of celltype (predict) - organism - study counts (with >=50 cells)
+meta_filter %>%  
+  filter(Organ == 'Eye') %>% 
+  group_by(organism, CellType_predict, study_accession) %>% 
+  count() %>% 
+  filter(n >= 50) %>% 
+  ungroup() %>% 
+  group_by(organism, CellType_predict) %>% 
+  count() %>% 
+  pivot_wider(values_from = n, names_from = organism) %>% 
+  filter(!is.na(CellType_predict)) %>% 
+  replace(is.na(.), values = 0) %>% 
   flextable()
 ```
 
@@ -391,7 +382,7 @@ diff_ratios <- diff_tab_big %>%
 gene_sets <- diff_tab %>% 
   left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
   filter(Ratio > 0.2) %>% group_by(Base, Organism) %>% 
-  slice_max(n=20, order_by = log2FoldChange)
+  slice_max(n=5, order_by = log2FoldChange)
   
 g <- gene_sets %>% filter(Organism == 'Homo sapiens') %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
 
