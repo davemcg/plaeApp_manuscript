@@ -41,10 +41,10 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-# data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-# data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -315,6 +315,7 @@ diff_tab %>%
   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
   pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
   as_tibble() %>% 
+  rename(`CellType (Predict)` = CellType_predict) %>% 
   flextable()
 
 # number of celltype (predict) - organism - study counts (with >=50 cells)
@@ -329,6 +330,7 @@ meta_filter %>%
   pivot_wider(values_from = n, names_from = organism) %>% 
   filter(!is.na(CellType_predict)) %>% 
   replace(is.na(.), values = 0) %>% 
+  rename(`CellType (Predict)` = CellType_predict) %>% 
   flextable()
 ```
 
@@ -368,7 +370,7 @@ diff_tab_big %>%
   
 ```
 
-### heatmap
+### heatmap human
 ```{r, fig.width=5, fig.height=20}
 diff_ratios <- diff_tab_big %>% 
     filter(Against != 'All') %>% 
@@ -384,9 +386,27 @@ gene_sets <- diff_tab %>%
   filter(Ratio > 0.2) %>% group_by(Base, Organism) %>% 
   slice_max(n=5, order_by = log2FoldChange)
   
+
 g <- gene_sets %>% filter(Organism == 'Homo sapiens') %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
 
-x <- scEiaD_2020_v01 %>% tbl("diff_testing") %>% filter(Gene %in% g) %>% collect() %>% filter(Group == 'CellType (Predict)', Organism == 'Homo sapiens', Against == 'All') %>% select(Gene, log2FoldChange, Base) %>% pivot_wider(values_from=log2FoldChange, names_from = Base) 
+# only uses CT that exist in the organism <-> CellType 
+ct <- meta_filter %>% filter(organism == 'Homo sapiens') %>% pull(CellType) %>% unique()
+
+x <- scEiaD_2020_v01 %>% tbl("diff_testing") %>% filter(Gene %in% g, Base %in% ct) %>% collect() %>% filter(Group == 'CellType (Predict)', Organism == 'Homo sapiens', Against == 'All') %>% select(Gene, log2FoldChange, Base) %>% pivot_wider(values_from=log2FoldChange, names_from = Base) 
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene
+x <- x[,-1]
+Heatmap(x, column_labels = celltype)
+```
+
+### heatmap mouse
+```{r, fig.width=5, fig.height=20}
+
+  
+g <- gene_sets %>% filter(Organism == 'Mus musculus') %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
+
+x <- scEiaD_2020_v01 %>% tbl("diff_testing") %>% filter(Gene %in% g) %>% collect() %>% filter(Group == 'CellType (Predict)', Organism == 'Mus musculus', Against == 'All') %>% select(Gene, log2FoldChange, Base) %>% pivot_wider(values_from=log2FoldChange, names_from = Base) 
 celltype <- colnames(x[,-1])
 x <- x %>% data.frame()
 row.names(x) <- x$Gene
