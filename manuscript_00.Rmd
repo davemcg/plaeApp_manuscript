@@ -336,53 +336,33 @@ meta_filter %>%
 Many of these genes can be differentially expressed in more than one cell type. To identify genes that are consistently differentially expressed we can use a more specific test. We define a consistent gene that is 
 
 ```{r}
-spec_diff <- diff_tab_big %>% 
-  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
-  group_by(Symbol, Organism, Base) %>% 
-  summarise(Count = n()) %>% 
-  summarise(Count = n())
-
-
-
-spec_diff_go <- spec_diff %>% 
-  filter(Count <= 3) %>% 
-  mutate(go = paste(Symbol, '___', Organism, sep = '')) %>% 
-  pull(go)
-
-diff_tab_big %>% 
-  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
-  group_by(Symbol, Organism, Base) %>% 
-  summarise(Count = n(),
-            baseMean = mean(baseMean),
-            log2FoldChange = mean(log2FoldChange),
-            padj = mean(padj)) %>% 
-  filter(Count > 1) %>% 
-  left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
-  mutate(Ratio = `Count.x` / `Count.y`) %>% 
-  select(-`Count.x`,-`Count.y`) %>% 
-  #mutate(go = paste(Symbol, '___', Organism, sep = '')) %>% 
-  #filter(go %in% (spec_diff_go))  %>% 
-  #select(-go) %>% 
-  ungroup() %>% 
-  group_by(Organism, Base) %>% 
-  slice_max(n = 10, order_by = log2FoldChange) 
+scEiaD_2020_v01 %>% 
+    tbl("diff_testing") %>% 
+    filter(Base == 'Cone') %>%  
+    filter(Group == 'CellType (Predict)', 
+           Against == 'All') %>% 
+  group_by(Gene) %>% 
+  summarise(Count = n(), log2FoldChange = mean(log2FoldChange), padj_count = sum(padj < 1e-4), padj = mean(padj)) %>% 
+  filter(!is.na(log2FoldChange), padj_count > 1) %>%  
+  arrange(-log2FoldChange)
   
 ```
 
 ### heatmap human
-```{r, fig.width=5, fig.height=20}
-diff_ratios <- diff_tab_big %>% 
-    filter(Against != 'All') %>% 
-    group_by(Symbol, ID, Organism, Base) %>% 
-    summarise(Count = n()) %>% 
-    filter(Count > 1) %>% 
-    left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
-    mutate(Ratio = `Count.x` / `Count.y`) %>% 
-    select(Symbol:Base, Ratio)
+```{r, fig.width=6, fig.height=17}
+# diff_ratios <- diff_tab_big %>% 
+#     filter(Against != 'All') %>% 
+#     group_by(Symbol, ID, Organism, Base) %>% 
+#     summarise(Count = n()) %>% 
+#     filter(Count > 1) %>% 
+#     left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
+#     mutate(Ratio = `Count.x` / `Count.y`) %>% 
+#     select(Symbol:Base, Ratio)
 
 gene_sets <- diff_tab %>% 
-  left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
-  filter(Ratio > 0.2) %>% group_by(Base, Organism) %>% 
+  #left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
+  #filter(Ratio > 0.2) %>% 
+  group_by(Base, Organism) %>% 
   slice_max(n=5, order_by = log2FoldChange)
 
 org <- 'Homo sapiens'
@@ -395,9 +375,10 @@ ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
 
 x <- scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
-  filter(Gene %in% g, Base %in% ct) %>% 
+  filter(Gene %in% g) %>% 
   collect() %>% 
-  filter(Group == 'CellType (Predict)', 
+  filter(Base %in% ct,
+         Group == 'CellType (Predict)', 
          Organism == org, Against == 'All') %>% 
   select(Gene, log2FoldChange, Base) %>% 
   pivot_wider(values_from=log2FoldChange, names_from = Base) 
@@ -421,9 +402,10 @@ ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
 
 x <- scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
-  filter(Gene %in% g, Base %in% ct) %>% 
+  filter(Gene %in% g) %>% 
   collect() %>% 
-  filter(Group == 'CellType (Predict)', 
+  filter(Base %in% ct,
+         Group == 'CellType (Predict)', 
          Organism == org, Against == 'All') %>% 
   select(Gene, log2FoldChange, Base) %>% 
   pivot_wider(values_from=log2FoldChange, names_from = Base) 
@@ -448,10 +430,10 @@ ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
 
 x <- scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
-  filter(Gene %in% g, Base %in% ct) %>% 
+  filter(Gene %in% g) %>% 
   collect() %>% 
   filter(Group == 'CellType (Predict)', 
-         Organism == org, Against == 'All') %>% 
+         Organism == org, Against == 'All', Base %in% ct) %>% 
   select(Gene, log2FoldChange, Base) %>% 
   pivot_wider(values_from=log2FoldChange, names_from = Base) 
 celltype <- colnames(x[,-1])

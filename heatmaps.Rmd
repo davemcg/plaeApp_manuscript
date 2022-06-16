@@ -46,10 +46,10 @@ Heatmap(t(x), row_labels = celltype)
 ```{r, fig.width=3, fig.height=2}
 rpe_diff <- scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
-  filter(Base == 'RPE') %>%  
+  filter(Base == 'RPC') %>%  
   filter(Group == 'CellType (Predict)', 
          Organism == org, Against == 'All') %>% 
-  select(Gene, log2FoldChange, pvalue, Base) %>% 
+  select(Gene, log2FoldChange, pvalue, Base, baseMean) %>% 
   collect()
 
 genes <- bind_rows(rpe_diff %>% slice_max(log2FoldChange, n = 12),
@@ -59,7 +59,7 @@ genes <- bind_rows(rpe_diff %>% slice_max(log2FoldChange, n = 12),
 
 rpe_diff %>% 
   ggplot(aes(x=log2FoldChange,y=-log2(pvalue))) + 
-  geom_point() + cowplot::theme_cowplot() + ggrepel::geom_label_repel(data = rpe_diff %>% 
+  geom_point(aes(size=log2(baseMean))) + cowplot::theme_cowplot() + ggrepel::geom_label_repel(data = rpe_diff %>% 
                                                                         filter(Gene %in% genes) %>% 
                                                                         mutate(Gene = gsub('\\(|\\)|ENSG\\d+','',Gene) %>% 
                                                                                  gsub(' ','',.)), 
