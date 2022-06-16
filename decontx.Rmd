@@ -1,0 +1,102 @@
+---
+title: 'PLAE enables quick and easy searching across one million ocular transcriptomes'
+author:
+  - Vinay Swamy:
+      institute: bg
+  - Zachary Batz:
+      institute: nnrl
+  - David McGaughey:
+      institute:
+        - bg
+      correspondence: "yes"
+      email: mcgaugheyd@mail.nih.gov
+institute:
+  - bg: Bioinformatics Group, Ophthalmic Genetics & Visual Function Branch, National Eye Institute, National Institutes of Health
+  - nnrl: Neurobiology, Neurodegeneration & Repair Laboratory, National Eye Institute, National Institutes of Health
+  - mgog: Medical Genetics and Ophthalmic Genomics Unit, National Eye Institute, National Institutes of Health
+    
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  word_document:
+    reference_docx: word-styles-reference-01.docx
+    fig_caption: yes
+    pandoc_args:
+      - '--lua-filter=scholarly-metadata.lua'
+      - '--lua-filter=author-info-blocks.lua'
+bibliography: zotero_plaeApp.bib
+csl: investigative-ophthalmology-and-visual-science.csl
+abstract: "PURPOSE: To create a high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We updated the content and structure of the underlying data (sc Eye in a Disk, scEiaD) and wrote the web application PLAE (https://plae.nei.nih.gov) to visualize and explore it. RESULTS: The new portal provides quick visualization of over a million individual cells from vertebrate eye-and body transcriptomes, XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we show XX. CONCLUSION: The PLAE v0.90 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on gene and transcript expression across 54 body and 19 eye tissues. "
+
+keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
+---
+
+```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
+#knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
+knitr::opts_chunk$set(out.width = '100%', dpi=300)
+library(tidyverse)
+library(citr)
+library(cowplot)
+library(ggrepel)
+library(colorspace)
+library(flextable)
+library(captioner)
+library(glue)
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+# setup caption-ing
+fig_cap <- captioner("Figure")
+supFig_cap <- captioner("Supplemental Figure")
+tab_cap <- captioner("Table")
+supTab_cap <- captioner("Supplemental Table")
+
+library(pool)
+library(RSQLite)
+meta_filter_v0 <- fst::read_fst(glue("{data_dir_vGiga}/paper_data/2021_03_17_meta_filter.fst")) %>% 
+  
+  mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType_predict),
+         CellType= case_when(CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
+                             TRUE ~ CellType))
+
+meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
+  
+  mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType_predict),
+         CellType= case_when(CellType == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
+                             TRUE ~ CellType),  
+         Tissue = case_when(grepl('Iris', Tissue) ~ 'Iris',
+                            TRUE ~ Tissue),
+         Tissue = case_when(grepl('^RPE|^Choroid', Tissue) ~ 'RPE-Choroid',
+                            TRUE ~ Tissue),
+         Citation = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'Swamy VS, Fufa TD, Hufnagel RB, McGaughey DM Building the Mega Single Cell Transcriptome Ocular Meta-Atlas Gigascience 2021 Oct 13;10(10)',
+                              TRUE ~ Citation),
+         PMID = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ '34651173',
+                          TRUE ~ PMID),
+         study_accession = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'SRP329495',
+                                     TRUE ~ study_accession))
+
+scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
+
+```
+
+```{r decontX, fig.height = 25, fig.width = 20, echo = F, message = F, fig.cap=decontX_cap}
+decontX_cap <- supFig_cap(name='decontX', caption = 'DecontX *in silico* ambient RNA contamination tool substantially removes Rhodopsin expression in non-rod cells while retaining high expression rods. First shown (a) is Rhodopsin expression across the scEiaD v0 dataset, without DecontX optimization. Note Rhodopsin expression is noticeable in many cell types beyond the rods. Next (b) is the scEiaD v1 dataset with DecontX optimization. Rhodopsin is nearly exclusively expressed in labelled rod cells. Despite the computational ambient RNA removal, Rhodopsin expression remains high in the Rods.')
+source('src/make_exp_plot.R')
+
+input <- list()
+input$exp_plot_groups <- c('organism')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- c('RHO (ENSG00000163914)')
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+
+v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
+v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+input$exp_filter_min_cell_number <- 1000
+v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellType_predict %in% unique(meta_filter_v0$CellType_predict)))
+plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
+```
