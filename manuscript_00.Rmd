@@ -295,7 +295,6 @@ While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage
 
 #```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
 
-
 #```
 
 ## Differential testing identifies thousands genes enriched across various ocular cell types
@@ -305,7 +304,7 @@ We used a "pseudo bulk" based approach wherein the counts for a category (CellTy
 # fix  occasional NA
 # data made from src/ensdb.R
 diff_tab_big <- read_tsv('data/diff_tab_big.tsv.gz')
-
+gene_tab <- bind_rows(read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz'), read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz'))
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
 
@@ -329,22 +328,25 @@ meta_filter %>%
   pivot_wider(values_from = n, names_from = organism) %>% 
   filter(!is.na(CellType_predict)) %>% 
   replace(is.na(.), values = 0) %>% 
+  arrange(CellType_predict) %>% 
   rename(`CellType (Predict)` = CellType_predict) %>% 
-  flextable()
+  mutate(`Well Supported` = case_when(`Homo sapiens` > 2 & `Mus musculus` > 2 ~ 'Yes',
+                                      TRUE ~ 'No')) %>% 
+  flextable(set_caption())
 ```
 
-# Well supported ocular cell types
+# Well supported ocular cell types identify 
 
-Cell types with more than two independent datasets in both human and mouse.
+We filter down to only assess cell types with more than two independent datasets in both human and mouse. This leaves ..... These well supported cell types can be used to more strenuously identify genes that are consistently differentially expressed in a cell type across multiple species. To define these well supported marker genes we only ass
 ```{r}
 ws_oct <- meta_filter %>%  
-    filter(Organ == 'Eye') %>% 
-    group_by(organism, CellType_predict, study_accession) %>% 
-    count() %>% 
-    filter(n >= 50) %>% 
-    ungroup() %>% 
-    group_by(organism, CellType_predict) %>% 
-    count() %>% filter(n >= 3) %>% 
+  filter(Organ == 'Eye') %>% 
+  group_by(organism, CellType_predict, study_accession) %>% 
+  count() %>% 
+  filter(n >= 50) %>% 
+  ungroup() %>% 
+  group_by(organism, CellType_predict) %>% 
+  count() %>% filter(n >= 3) %>% 
   ungroup() %>% 
   group_by(CellType_predict) %>% 
   summarise(Count = n()) %>% 
@@ -356,21 +358,25 @@ To identify genes that are differentially expressed across species we
 
 ```{r}
 consist_diff <- scEiaD_2020_v01 %>% 
-    tbl("diff_testing") %>% 
-    filter(Base %in% ws_oct) %>%  
-    filter(Group == 'CellType (Predict)', 
-           Against == 'All') %>% 
-    group_by(Base, Gene) %>% 
-    summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-4), `mean padj` = mean(padj)) %>% 
-    filter(`mean log2FC` > 2, `sig count` > 1, `mean padj` < 1e-5) %>%  
-    collect() %>% 
-    mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
-    left_join(gene_tab, by = 'GENEID') %>% 
-    select(-Gene) %>% 
-    relocate(SYMBOL, GENEID) %>% 
-    dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
-    arrange(-`mean log2FC`)
+  tbl("diff_testing") %>% 
+  filter(Base %in% ws_oct) %>%  
+  filter(Group == 'CellType (Predict)', 
+         Against == 'All') %>% 
+  group_by(Base, Gene) %>% 
+  summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-4), `mean padj` = mean(padj)) %>% 
+  filter(`mean log2FC` > 2, `sig count` > 1, `mean padj` < 1e-5) %>%  
+  collect() %>% 
+  mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
+  left_join(gene_tab, by = 'GENEID') %>% 
+  select(-Gene) %>% 
+  relocate(SYMBOL, GENEID) %>% 
+  dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
+  arrange(-`mean log2FC`)
 
+# id diff genes only seen once across the cell types
+uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
+consist_diff %>% group_by(Base) %>% summarise(Count = n())
+consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 ```
 
 ### heatmap human
