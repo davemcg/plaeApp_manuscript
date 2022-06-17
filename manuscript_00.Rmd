@@ -41,10 +41,10 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-# data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-# data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -68,7 +68,7 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
                              TRUE ~ CellType),  
          Tissue = case_when(grepl('Iris', Tissue) ~ 'Iris',
                             TRUE ~ Tissue),
-         Tissue = case_when(grepl('RPE|Choroid', Tissue) ~ 'RPE-Choroid',
+         Tissue = case_when(grepl('^RPE|^Choroid', Tissue) ~ 'RPE-Choroid',
                             TRUE ~ Tissue),
          Citation = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'Swamy VS, Fufa TD, Hufnagel RB, McGaughey DM Building the Mega Single Cell Transcriptome Ocular Meta-Atlas Gigascience 2021 Oct 13;10(10)',
                               TRUE ~ Citation),
@@ -124,6 +124,7 @@ Every study brought into scEiaD was hand curated to identify unique biological s
 
 ## Differential gene testing
 
+The scater::aggregateAcrossCells function was used to aggregate gene counts across species, study accession, and [category] where category was either Cluster, CellType, or CellType (Predict) assignments for a cell. If there were fewer than 50 cells in organism - study accession - category combination, they were discarded for the differential test. Any genes with a sum of 0 counts after aggregation were removed. The aggregated matrix was imported into DESeq2 using the DESeqDataSetFromMatrix function with the design given as "~study_accession + [category]". Contrasts were extracted either with the target category (e.g. "Cone") against all remaining or in a pair wise manner ("Cone" vs "Rod") with the DESeq2 "results" function. Genes were considered to be differentially expressed if they have a padj less than $1 x 10^-5 and a abs(log2FoldChange) > 2. To enhance the specificity of the 
 
 
 ## scEiaD structure and web app optimization
@@ -132,13 +133,13 @@ The web app at plae.nei.nih.gov can display gene expression in only a few second
 
 ## Data reproducibility
 
-The codebase for scEiaD is available at github.com/davemcg/scEiaD; the commit corresponding to this manuscript is XXXXXXX. There are three relevant Snakemake pipelines which were used to create scEiaD: SnakeQUANT, which was used to quantify the gene / cell expression from the raw fastq files, SnakePOP, which runs the multi-parameter integration methods, and SnakeSCEIAD, which takes the optimal parameters from SnakePOP to build the scEiaD sqlite database for the app. 
+The codebase for scEiaD is available at github.com/davemcg/scEiaD; the commit corresponding to this manuscript is XXXXXXX. There are three relevant Snakemake pipelines which were used to create scEiaD: SnakeQUANT, which was used to quantify the gene / cell expression from the raw fastq files, SnakePOP, which runs the multi-parameter integration methods, and SnakeSCEIAD, which uses the optimal parameters identified in SnakePOP to run the cell type machine learning and differential gene testing that is incorporated into the scEiaD sqlite database for the app. 
 
 # Results
 
 ## New studies and improvements to the scEiaD database
 
-Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types [@swamy_building_2021]. We updated the scEiaD resource for the PLAE v0.90 web app in six important ways. First, we added two chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset and two more cornea datasets to enhance coverage across the eye. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (`r supFig_cap(name = 'decontX', display = 'cite')`). Fifth, we increased the cell retention cutoff for detected unique transcripts per cell from 200 to 300 (CHECK THIS), to improve the database quality. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris project to more easily provide non eye cell type comparisons.
+Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` studies, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types [@swamy_building_2021]. We updated the scEiaD resource for the PLAE v0.91 web app in six important ways. First, we added a large chicken retina (*Gallus gallus*) studies. Second we added an ocular outflow tract dataset and two more cornea datasets to enhance coverage across the eye. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (`r supFig_cap(name = 'decontX', display = 'cite')`). Fifth, we increased the cell retention cutoff for detected unique transcripts per cell from 200 to 300 (CHECK THIS), to improve the database quality. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris project to more easily provide non eye cell type comparisons.
 
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we make the first data table on the loading page of plae.nei.nih.gov list each of these studies along with a direct link to their citation, where possible. 
 
@@ -261,7 +262,7 @@ Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(
 
 ```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=web_resources_cap}
 
-tab_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
+web_resources_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
 
 feature_table <- rbind(
   c('PLAE','Yes','Yes', 'Yes', '1136 ', 'https://plae.nei.nih.gov'),
@@ -292,42 +293,19 @@ For users interested in seeing how expression of a gene relates to study or othe
 
 While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can use powerful filtering options to only display data from certain metadata characteristics, like species or publication (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`d).
 
-```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
+#```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
 
-
-```
+#```
 
 ## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types
 
 We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The created a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices and thus allowing for mature bulk RNA-seq tooling to be used. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was con structured, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). We find, in total, thousands of differentially expressed genes across the ocular cell types. 
+
 ```{r}
 # fix  occasional NA
 # data made from src/ensdb.R
-hs_v86_tab <- read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz')
-mm_v79_tab <- read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz')
-hs_mm <- bind_rows(hs_v86_tab, mm_v79_tab)
-
-diff_tab_big <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
-  filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) > 2) %>% 
-  collect() %>% 
-  separate(Gene, into = c('Symbol', 'ID'), sep = ' ') %>% 
-  mutate(ID = gsub('\\(|\\)', '', ID))
-
-diff_tab_big2 <- diff_tab_big %>% 
-  filter(Symbol == '-' | Symbol == 'NA')
-
-diff_tab_big2 <- 
-  diff_tab_big2 %>% 
-  left_join(hs_mm, by = c('ID' = 'GENEID')) %>% 
-  select(-Symbol) %>% 
-  rename(Symbol = SYMBOL) %>% 
-  relocate(Symbol)
-
-diff_tab_big <- bind_rows(
-  diff_tab_big %>% filter(!Symbol %in% c('-', 'NA')),
-  diff_tab_big2
-)
-
+diff_tab_big <- read_tsv('data/diff_tab_big.tsv.gz')
+gene_tab <- bind_rows(read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz'), read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz'))
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
 
@@ -338,63 +316,158 @@ diff_tab %>%
   pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
   as_tibble() %>% 
   flextable()
+
+# number of celltype (predict) - organism - study counts (with >=50 cells)
+meta_filter %>%  
+  filter(Organ == 'Eye') %>% 
+  group_by(organism, CellType_predict, study_accession) %>% 
+  count() %>% 
+  filter(n >= 50) %>% 
+  ungroup() %>% 
+  group_by(organism, CellType_predict) %>% 
+  count() %>% 
+  pivot_wider(values_from = n, names_from = organism) %>% 
+  filter(!is.na(CellType_predict)) %>% 
+  replace(is.na(.), values = 0) %>% 
+  arrange(CellType_predict) %>% 
+  rename(`CellType (Predict)` = CellType_predict) %>% 
+  mutate(`Well Supported` = case_when(`Homo sapiens` > 2 & `Mus musculus` > 2 ~ 'Yes',
+                                      TRUE ~ 'No')) %>% 
+  flextable(set_caption())
 ```
 
-Many of these genes can be differentially expressed in more than one cell type. To identify genes that are consistently differentially expressed we can use a more specific test. We define a consistent gene that is 
+# Well supported ocular cell types identify 
+
+We filter down to only assess cell types with more than two independent datasets in both human and mouse. This leaves ..... These well supported cell types can be used to more strenuously identify genes that are consistently differentially expressed in a cell type across multiple species. To define these well supported marker genes we only ass
+```{r}
+ws_oct <- meta_filter %>%  
+  filter(Organ == 'Eye') %>% 
+  group_by(organism, CellType_predict, study_accession) %>% 
+  count() %>% 
+  filter(n >= 50) %>% 
+  ungroup() %>% 
+  group_by(organism, CellType_predict) %>% 
+  count() %>% filter(n >= 3) %>% 
+  ungroup() %>% 
+  group_by(CellType_predict) %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 1, !is.na(CellType_predict)) %>% 
+  pull(CellType_predict)
+```
+
+To identify genes that are differentially expressed across species we 
 
 ```{r}
-spec_diff <- diff_tab_big %>% 
-  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
-  group_by(Symbol, Organism, Base) %>% 
-  summarise(Count = n()) %>% 
-  summarise(Count = n())
+consist_diff <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Base %in% ws_oct) %>%  
+  filter(Group == 'CellType (Predict)', 
+         Against == 'All') %>% 
+  group_by(Base, Gene) %>% 
+  summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-4), `mean padj` = mean(padj)) %>% 
+  filter(`mean log2FC` > 2, `sig count` > 1, `mean padj` < 1e-5) %>%  
+  collect() %>% 
+  mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
+  left_join(gene_tab, by = 'GENEID') %>% 
+  select(-Gene) %>% 
+  relocate(SYMBOL, GENEID) %>% 
+  dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
+  arrange(-`mean log2FC`)
 
-
-
-spec_diff_go <- spec_diff %>% 
-  filter(Count <= 3) %>% 
-  mutate(go = paste(Symbol, '___', Organism, sep = '')) %>% 
-  pull(go)
-
-diff_tab_big %>% 
-  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
-  group_by(Symbol, Organism, Base) %>% 
-  summarise(Count = n(),
-            baseMean = mean(baseMean),
-            log2FoldChange = mean(log2FoldChange),
-            padj = mean(padj)) %>% 
-  filter(Count > 1) %>% 
-  left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
-  mutate(Ratio = `Count.x` / `Count.y`) %>% 
-  select(-`Count.x`,-`Count.y`) %>% 
-  #mutate(go = paste(Symbol, '___', Organism, sep = '')) %>% 
-  #filter(go %in% (spec_diff_go))  %>% 
-  #select(-go) %>% 
-  ungroup() %>% 
-  group_by(Organism, Base) %>% 
-  slice_max(n = 10, order_by = log2FoldChange) 
-  
+# id diff genes only seen once across the cell types
+uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
+consist_diff %>% group_by(Base) %>% summarise(Count = n())
+consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 ```
 
-### heatmap
-```{r, fig.width=5, fig.height=20}
-diff_ratios <- diff_tab_big %>% 
-    filter(Against != 'All') %>% 
-    group_by(Symbol, ID, Organism, Base) %>% 
-    summarise(Count = n()) %>% 
-    filter(Count > 1) %>% 
-    left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
-    mutate(Ratio = `Count.x` / `Count.y`) %>% 
-    select(Symbol:Base, Ratio)
+### heatmap human
+```{r, fig.width=6, fig.height=17}
+# diff_ratios <- diff_tab_big %>% 
+#     filter(Against != 'All') %>% 
+#     group_by(Symbol, ID, Organism, Base) %>% 
+#     summarise(Count = n()) %>% 
+#     filter(Count > 1) %>% 
+#     left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
+#     mutate(Ratio = `Count.x` / `Count.y`) %>% 
+#     select(Symbol:Base, Ratio)
 
 gene_sets <- diff_tab %>% 
-  left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
-  filter(Ratio > 0.2) %>% group_by(Base, Organism) %>% 
-  slice_max(n=20, order_by = log2FoldChange)
-  
-g <- gene_sets %>% filter(Organism == 'Homo sapiens') %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
+  #left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
+  #filter(Ratio > 0.2) %>% 
+  group_by(Base, Organism) %>% 
+  slice_max(n=5, order_by = log2FoldChange)
 
-x <- scEiaD_2020_v01 %>% tbl("diff_testing") %>% filter(Gene %in% g) %>% collect() %>% filter(Group == 'CellType (Predict)', Organism == 'Homo sapiens', Against == 'All') %>% select(Gene, log2FoldChange, Base) %>% pivot_wider(values_from=log2FoldChange, names_from = Base) 
+org <- 'Homo sapiens'
+
+
+g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
+
+# only uses CT that exist in the organism <-> CellType 
+ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
+
+x <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Gene %in% g) %>% 
+  collect() %>% 
+  filter(Base %in% ct,
+         Group == 'CellType (Predict)', 
+         Organism == org, Against == 'All') %>% 
+  select(Gene, log2FoldChange, Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = Base) 
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene
+x <- x[,-1]
+Heatmap(x, column_labels = celltype)
+```
+
+### heatmap mouse
+```{r, fig.width=5, fig.height=20}
+
+org <- 'Mus musculus'
+
+
+g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
+
+# only uses CT that exist in the organism <-> CellType 
+ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
+
+x <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Gene %in% g) %>% 
+  collect() %>% 
+  filter(Base %in% ct,
+         Group == 'CellType (Predict)', 
+         Organism == org, Against == 'All') %>% 
+  select(Gene, log2FoldChange, Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = Base) 
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene
+x <- x[,-1]
+Heatmap(x, column_labels = celltype)
+```
+
+
+### heatmap macaque
+```{r, fig.width=5, fig.height=20}
+
+org <- 'Macaca fascicularis'
+
+
+g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
+
+# only uses CT that exist in the organism <-> CellType 
+ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
+
+x <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Gene %in% g) %>% 
+  collect() %>% 
+  filter(Group == 'CellType (Predict)', 
+         Organism == org, Against == 'All', Base %in% ct) %>% 
+  select(Gene, log2FoldChange, Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = Base) 
 celltype <- colnames(x[,-1])
 x <- x %>% data.frame()
 row.names(x) <- x$Gene
@@ -522,5 +595,5 @@ plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
 ```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=studies_table_cap}
 studies_table_cap <- supTab_cap(name = 'studies_table', caption = 'Studies, tissues, and number of cells across scEiaD')
 
-meta_filter %>% group_by(Citation, PMID, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable()
+meta_filter %>% group_by(Citation, PMID, organism, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable()
 ```

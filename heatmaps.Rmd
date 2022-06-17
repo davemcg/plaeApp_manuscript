@@ -1,0 +1,108 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+### heatmap human
+```{r, fig.width=12, fig.height=5}
+diff_ratios <- diff_tab_big %>% 
+  filter(Against != 'All') %>% 
+  group_by(Symbol, ID, Organism, Base) %>% 
+  summarise(Count = n()) %>% 
+  filter(Count > 1) %>% 
+  left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
+  mutate(Ratio = `Count.x` / `Count.y`) %>% 
+  select(Symbol:Base, Ratio)
+
+gene_sets <- diff_tab %>% 
+  left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
+  filter(Ratio > 0.2) %>% group_by(Base, Organism) %>% 
+  slice_max(n=5, order_by = log2FoldChange)
+
+org <- 'Homo sapiens'
+
+
+g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
+
+# only uses CT that exist in the organism <-> CellType 
+ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
+
+x <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Gene %in% g, Base %in% ct) %>% 
+  collect() %>% 
+  filter(Group == 'CellType (Predict)', 
+         Organism == org, Against == 'All') %>% 
+  select(Gene, log2FoldChange, Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = Base) 
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene %>% gsub('\\(|\\)|ENSG\\d+','',.) %>% gsub(' ','',.)
+x <- x[,-1]
+Heatmap(t(x), row_labels = celltype)
+```
+
+
+# Rpe volcano
+```{r, fig.width=3, fig.height=2}
+rpe_diff <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Base == 'RPC') %>%  
+  filter(Group == 'CellType (Predict)', 
+         Organism == org, Against == 'All') %>% 
+  select(Gene, log2FoldChange, pvalue, Base, baseMean) %>% 
+  collect()
+
+genes <- bind_rows(rpe_diff %>% slice_max(log2FoldChange, n = 12),
+                   rpe_diff %>% slice_min(log2FoldChange, n = 5),
+                   rpe_diff %>% slice_min(pvalue, n = 7)) %>% 
+  filter(!grepl('NA', Gene)) %>% pull(Gene) %>% unique() 
+
+rpe_diff %>% 
+  ggplot(aes(x=log2FoldChange,y=-log2(pvalue))) + 
+  geom_point(aes(size=log2(baseMean))) + cowplot::theme_cowplot() + ggrepel::geom_label_repel(data = rpe_diff %>% 
+                                                                        filter(Gene %in% genes) %>% 
+                                                                        mutate(Gene = gsub('\\(|\\)|ENSG\\d+','',Gene) %>% 
+                                                                                 gsub(' ','',.)), 
+                                                                      aes(label = Gene),
+                                                                      max.overlaps = 100)
+```
+
+
+
+```{r, fig.width=6, fig.height=4}
+
+x <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Gene %in% genes) %>% 
+  collect() %>% 
+  filter(Group == 'CellType (Predict)', 
+         Organism == org, 
+         Against == 'All') %>% 
+  select(Gene, log2FoldChange, Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = Base) 
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene %>% gsub('\\(|\\)|ENSG\\d+','',.) %>% gsub(' ','',.)
+x <- x[,-1]
+Heatmap(x, column_labels = celltype)
+```
+
+
+```{r, fig.width=6, fig.height=4}
+org <- 'Mus musculus'
+x <- scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Gene %in% genes) %>% 
+  collect() %>% 
+  filter(Group == 'CellType (Predict)', 
+         Organism == org, 
+         Against == 'All') %>% 
+  select(Gene, log2FoldChange, Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = Base) 
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene %>% gsub('\\(|\\)|ENSG\\d+','',.) %>% gsub(' ','',.)
+x <- x[,-1]
+Heatmap(x, column_labels = celltype)
+```
+```
