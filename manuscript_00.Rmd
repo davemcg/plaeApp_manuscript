@@ -309,12 +309,14 @@ gene_tab <- bind_rows(read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz'), read_t
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
 
-diff_tab %>% 
+diff_tab_sup <- diff_tab %>% 
   group_by(Base, Organism) %>% 
   summarise(Count = n()) %>% 
   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
   pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
-  as_tibble() %>% 
+  as_tibble()
+write_csv(diff_tab_sup, file = 'supplemental_files/differential_expression_table.csv')
+diff_tab_sup %>% 
   flextable()
 
 # number of celltype (predict) - organism - study counts (with >=50 cells)
@@ -333,12 +335,15 @@ meta_filter %>%
   rename(`CellType (Predict)` = CellType_predict) %>% 
   mutate(`Well Supported` = case_when(`Homo sapiens` > 2 & `Mus musculus` > 2 ~ 'Yes',
                                       TRUE ~ 'No')) %>% 
-  flextable(set_caption())
+  flextable()
 ```
 
 # Well supported ocular cell types identify 
 
 We filter down to only assess cell types with more than two independent datasets in both human and mouse. This leaves ..... These well supported cell types can be used to more strenuously identify genes that are consistently differentially expressed in a cell type across multiple species. To define these well supported marker genes we only ass
+
+To identify genes that are differentially expressed across species we 
+
 ```{r}
 ws_oct <- meta_filter %>%  
   filter(Organ == 'Eye') %>% 
@@ -353,11 +358,7 @@ ws_oct <- meta_filter %>%
   summarise(Count = n()) %>% 
   filter(Count > 1, !is.na(CellType_predict)) %>% 
   pull(CellType_predict)
-```
 
-To identify genes that are differentially expressed across species we 
-
-```{r}
 consist_diff <- scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
   filter(Base %in% ws_oct) %>%  
@@ -369,7 +370,6 @@ consist_diff <- scEiaD_2020_v01 %>%
   collect() %>% 
   mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
   left_join(gene_tab, by = 'GENEID') %>% 
-  select(-Gene) %>% 
   relocate(SYMBOL, GENEID) %>% 
   dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
   arrange(-`mean log2FC`)
@@ -378,101 +378,6 @@ consist_diff <- scEiaD_2020_v01 %>%
 uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
 consist_diff %>% group_by(Base) %>% summarise(Count = n())
 consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
-```
-
-### heatmap human
-```{r, fig.width=6, fig.height=17}
-# diff_ratios <- diff_tab_big %>% 
-#     filter(Against != 'All') %>% 
-#     group_by(Symbol, ID, Organism, Base) %>% 
-#     summarise(Count = n()) %>% 
-#     filter(Count > 1) %>% 
-#     left_join(spec_diff, by = c("Symbol", "Organism")) %>% 
-#     mutate(Ratio = `Count.x` / `Count.y`) %>% 
-#     select(Symbol:Base, Ratio)
-
-gene_sets <- diff_tab %>% 
-  #left_join(diff_ratios, by = c('Symbol', 'ID','Base','Organism')) %>% 
-  #filter(Ratio > 0.2) %>% 
-  group_by(Base, Organism) %>% 
-  slice_max(n=5, order_by = log2FoldChange)
-
-org <- 'Homo sapiens'
-
-
-g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
-
-# only uses CT that exist in the organism <-> CellType 
-ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
-
-x <- scEiaD_2020_v01 %>% 
-  tbl("diff_testing") %>% 
-  filter(Gene %in% g) %>% 
-  collect() %>% 
-  filter(Base %in% ct,
-         Group == 'CellType (Predict)', 
-         Organism == org, Against == 'All') %>% 
-  select(Gene, log2FoldChange, Base) %>% 
-  pivot_wider(values_from=log2FoldChange, names_from = Base) 
-celltype <- colnames(x[,-1])
-x <- x %>% data.frame()
-row.names(x) <- x$Gene
-x <- x[,-1]
-Heatmap(x, column_labels = celltype)
-```
-
-### heatmap mouse
-```{r, fig.width=5, fig.height=20}
-
-org <- 'Mus musculus'
-
-
-g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
-
-# only uses CT that exist in the organism <-> CellType 
-ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
-
-x <- scEiaD_2020_v01 %>% 
-  tbl("diff_testing") %>% 
-  filter(Gene %in% g) %>% 
-  collect() %>% 
-  filter(Base %in% ct,
-         Group == 'CellType (Predict)', 
-         Organism == org, Against == 'All') %>% 
-  select(Gene, log2FoldChange, Base) %>% 
-  pivot_wider(values_from=log2FoldChange, names_from = Base) 
-celltype <- colnames(x[,-1])
-x <- x %>% data.frame()
-row.names(x) <- x$Gene
-x <- x[,-1]
-Heatmap(x, column_labels = celltype)
-```
-
-
-### heatmap macaque
-```{r, fig.width=5, fig.height=20}
-
-org <- 'Macaca fascicularis'
-
-
-g <- gene_sets %>% filter(Organism == org) %>%  mutate(gk = paste0(Symbol, ' (', ID, ')')) %>% pull(gk) %>% unique()
-
-# only uses CT that exist in the organism <-> CellType 
-ct <- meta_filter %>% filter(organism == org) %>% pull(CellType) %>% unique()
-
-x <- scEiaD_2020_v01 %>% 
-  tbl("diff_testing") %>% 
-  filter(Gene %in% g) %>% 
-  collect() %>% 
-  filter(Group == 'CellType (Predict)', 
-         Organism == org, Against == 'All', Base %in% ct) %>% 
-  select(Gene, log2FoldChange, Base) %>% 
-  pivot_wider(values_from=log2FoldChange, names_from = Base) 
-celltype <- colnames(x[,-1])
-x <- x %>% data.frame()
-row.names(x) <- x$Gene
-x <- x[,-1]
-Heatmap(x, column_labels = celltype)
 ```
 
 ```{r}
@@ -511,7 +416,8 @@ diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>%
 down_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
   filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) < -2) %>% 
   collect() %>% 
-  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% mutate(k = paste(Symbol, Base, sep = '_'))
+  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% 
+  mutate(k = paste(Symbol, Base, sep = '_'))
 
 diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>% 
   filter(k %in% down_tab$k, Base %in% c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )) %>% 
