@@ -80,6 +80,7 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
+
 ```
 
 
@@ -297,6 +298,74 @@ While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage
 
 #```
 
+## Cell Type Proportions
+```{r, fig.width=5, fig.height=12}
+
+# map color as plae app does
+categorical_columns <- c("Phase","batch","study_accession","library_layout","organism","Platform",
+                         "Covariate","CellType","CellType_predict","TabulaMurisCellType","TabulaMurisCellType_predict",
+                         "GSE","Summary","Design","Citation","PMID","Stage","cluster",
+                         "Doublet","TechType", "SubCellType", 'subcluster', 'Age', "retina_region",
+                         'Tissue','Organ', 'Source','sample_accession')
+#"SubCellType" and subcluster are problems
+meta_filter <- meta_filter %>% mutate(Age = as.character(Age), SubCellType = tidyr::replace_na(SubCellType, 'None'),
+                                      subcluster = as.character(subcluster))
+
+
+map_color <- function(column, meta_filter){
+  master_colorlist <- c( pals::glasbey(), pals::alphabet(), pals::cols25()[1:23], pals::alphabet2()) %>% unique()
+  values <- meta_filter %>% pull(!!column) %>% unique %>% sort
+  if(length(values) > length(master_colorlist) ){
+    r= round(length(values) / length(master_colorlist)) +1
+    master_colorlist <- rep(master_colorlist, r)
+  }
+  
+  colors <- master_colorlist[1:length(values)]
+  return(tibble(meta_category = column,value = values, color=colors))
+  
+}
+
+cat_to_color_df <- lapply(categorical_columns, function(col) map_color(col, meta_filter)) %>% bind_rows()
+# now roll through and set each value to the same color across CellType and CellType (predict)
+# e.g. RPE will be one color in CellType and CellType (Predict)
+celltype_x_color_map <- cat_to_color_df %>% filter(meta_category %in% c("CellType", "CellType_predict")) %>% group_by(value) %>% summarise(c2 = head(color,1))
+cat_to_color_df <- cat_to_color_df %>% left_join(celltype_x_color_map) %>% mutate(color = case_when(!is.na(c2) ~ c2, TRUE ~ color)) %>% select(-c2)
+
+
+o_ct <- meta_filter %>% filter(Tissue == 'Retina') %>% pull(CellType)
+p_data <- meta_filter %>% 
+  #mutate(CellType_predict = Tissue) %>% 
+  #mutate(CellType_predict = case_when(!CellType_predict %in% ws_oct ~ 'Other',
+  #                                    TRUE ~ CellType_predict)) %>% 
+  filter(Organ == 'Eye') %>% 
+  mutate(Citation = str_trunc(Citation, width = 20)) %>% 
+  group_by(Citation, organism, Tissue, CellType_predict) %>% 
+  summarise(Count = n()) %>% 
+  mutate(Proportion = Count/sum(Count) * 100) 
+
+meta_column <- 'CellType_predict'
+cur_color_df <- cat_to_color_df %>%
+  filter( meta_category %in%  meta_column,
+          value %in% p_data[[meta_column]]) %>% distinct
+
+color_list <- cur_color_df %>% pull(color)
+# replaced join with this for speed
+k <- cur_color_df$color
+names(k) <- cur_color_df$value
+np_color <- {k[p_data[[meta_column]] ]} %>% paste0(., '33')
+names(np_color) <- NULL
+color_data <- cur_color_df  %>%
+  select(value) %>%
+  mutate( x=0)
+names(color_list) <- color_data$value
+
+p_data %>% ggplot(aes(y=Citation,x=Proportion,fill=CellType_predict)) + geom_bar(stat= 'identity') +
+  scale_fill_manual(name= meta_column,
+                    values = color_list) + 
+  ggforce::facet_col(vars(organism, Tissue), scale = 'free', space = 'free') +
+  cowplot::theme_cowplot() +
+  guides(fill=guide_legend(ncol =1))
+```
 ## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types
 
 We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The created a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices and thus allowing for mature bulk RNA-seq tooling to be used. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was con structured, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). We find, in total, thousands of differentially expressed genes across the ocular cell types. 
@@ -380,6 +449,46 @@ consist_diff %>% group_by(Base) %>% summarise(Count = n())
 consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 ```
 
+```{r, fig.height=8, fig.width=6}
+g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=5, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
+
+test <- scEiaD_2020_v01 %>%
+  tbl("diff_testing") %>%
+  filter(Gene %in% g) %>%
+  collect() %>%
+  filter(Base %in% ws_oct,
+         Group == 'CellType (Predict)',
+         Against == 'All') %>%
+  select(Gene, Organism, log2FoldChange, Base)
+
+x <- test %>% 
+  mutate(GO = paste0(Base, '_', Organism)) %>% 
+  select(-Organism, -Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = GO)
+celltype <- colnames(x[,-1])
+x <- x %>% data.frame()
+row.names(x) <- x$Gene
+
+x <- x[,-1]
+
+
+
+organism <- str_extract(celltype, '_\\w+ \\w+') %>% gsub('_','',.)
+cts  <- str_extract(celltype, '.*_') %>% gsub('_','',.)
+genes <- row.names(x) %>% gsub(' \\(.*','',.)
+
+base_yo <- consist_diff %>% filter(Symbol %in% genes) %>% pull(Base)
+
+
+hm <- ComplexHeatmap::Heatmap(x, column_labels = organism, 
+                              column_split = cts, 
+                              row_split = base_yo, 
+                              row_labels = genes, 
+                              column_title_rot = 90, 
+                              name = 'log2FC', use_raster = TRUE,
+                              row_title_rot = 0)
+ComplexHeatmap::draw(hm, padding = unit(c(2, 2, 30, 2), "mm"))
+```
 ```{r}
 # top 100 genes in each organism/base category
 diff_tab %>% 
