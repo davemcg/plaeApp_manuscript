@@ -41,3 +41,29 @@ diff_tab_big <- bind_rows(
 )
 
 write_tsv(diff_tab_big, file = 'data/diff_tab_big.tsv.gz')
+
+
+# down tab
+
+down_tab_big <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
+  filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) < -2) %>% 
+  collect() %>% 
+  separate(Gene, into = c('Symbol', 'ID'), sep = ' ') %>% 
+  mutate(ID = gsub('\\(|\\)', '', ID))
+
+down_tab_big2 <- down_tab_big %>% 
+  filter(Symbol == '-' | Symbol == 'NA')
+
+down_tab_big2 <- 
+  down_tab_big2 %>% 
+  left_join(hs_mm, by = c('ID' = 'GENEID')) %>% 
+  select(-Symbol) %>% 
+  rename(Symbol = SYMBOL) %>% 
+  relocate(Symbol)
+
+down_tab_big <- bind_rows(
+  down_tab_big %>% filter(!Symbol %in% c('-', 'NA')),
+  diff_tab_big2
+)
+
+write_tsv(down_tab_big, file = 'data/down_tab_big.tsv.gz')

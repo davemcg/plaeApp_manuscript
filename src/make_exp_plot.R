@@ -57,9 +57,9 @@ make_exp_plot <- function(input, db, meta_filter){
   #cat(input)
   box_data <- box_data %>%
     filter(!Platform %in% c('SCRBSeq')) %>%
-    mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
-                                        CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
-                                        TRUE ~ CellType_predict)) %>%
+    # mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
+    #                                     CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
+    #                                     TRUE ~ CellType_predict)) %>%
     mutate(Stage = factor(Stage, levels = c('Early Dev.', 'Late Dev.', 'Maturing', 'Mature'))) %>%
     #filter(!is.na(!!as.symbol(grouping_features))) %>%
     group_by_at(vars(one_of(c('Gene', input$exp_plot_facet, grouping_features)))) %>%
@@ -92,14 +92,30 @@ make_exp_plot <- function(input, db, meta_filter){
   }
   box_data$Group <- box_data[,c(2:(length(grouping_features)+1))] %>% tidyr::unite(x, sep = ' ') %>% pull(1)
   
-  box_data %>%
-    ggplot(aes(x=Gene, y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features))) +
-    geom_boxplot(color = 'black', outlier.shape = NA) +
-    ggbeeswarm::geom_quasirandom(aes(size = 8), groupOnX = TRUE) +
-    cowplot::theme_cowplot() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-    scale_radius(range=c(2, 6)) +
-    scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
-    theme(legend.position="bottom") +
-    facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free_x', vars(!!as.symbol(input$exp_plot_facet)))
+  if (input$flip_facet){
+    box_data  %>% 
+      mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
+      ggplot(aes(x=!!as.symbol(input$exp_plot_facet), y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features))) +
+      geom_boxplot(color = 'black', outlier.shape = NA) +
+      ggbeeswarm::geom_quasirandom(aes(size = 8), groupOnX = TRUE) +
+      cowplot::theme_cowplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      scale_radius(range=c(2, 6)) +
+      scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
+      theme(legend.position="bottom") +
+      facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free', 'Gene')
+  }
+  else {
+    box_data %>%
+      mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
+      ggplot(aes(x=Gene, y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features))) +
+      geom_boxplot(color = 'black', outlier.shape = NA) +
+      ggbeeswarm::geom_quasirandom(aes(size = 8), groupOnX = TRUE) +
+      cowplot::theme_cowplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      scale_radius(range=c(2, 6)) +
+      scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
+      theme(legend.position="bottom") +
+      facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free_x', vars(!!as.symbol(input$exp_plot_facet)))
+  }
 }

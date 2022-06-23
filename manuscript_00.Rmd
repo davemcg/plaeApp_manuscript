@@ -41,10 +41,10 @@ library(colorspace)
 library(flextable)
 library(captioner)
 library(glue)
-#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -252,7 +252,7 @@ d <- meta_filter %>% filter(Organ == 'Eye') %>%
 
 
 a_aa_b <- plot_grid(a,aa,b, ncol = 1, align = 'hv', rel_heights = c(10, 1.5,3.5), labels = 'a')
-c_d <- plot_grid(c,d, rel_heights = c(3,10), ncol = 1, align= 'hv', axis = 'l',labels = c('b','c'))
+c_d <- plot_grid(c,d + theme(legend.position = "none"), rel_heights = c(3,10), ncol = 1, align= 'hv', axis = 'l',labels = c('b','c'))
 
 
 # make E now
@@ -323,8 +323,9 @@ proportion_bar_plot <- p_data %>% ggplot(aes(y=Citation,x=Proportion,fill=CellTy
   guides(fill=guide_legend(ncol =1))
 
 
+e <- plot_grid(proportion_bar_plot, labels = c('d'))
 
-plot_grid(a_aa_b, c_d, proportion_bar_plot, ncol = 3, rel_widths = c(1,1.6, 3))
+plot_grid(a_aa_b, c_d , e, ncol = 3, rel_widths = c(1,1.6, 2.2))
 ```
 
 
@@ -377,6 +378,7 @@ We used a "pseudo-bulk" based approach where the counts for a category (CellType
 # fix  occasional NA
 # data made from src/ensdb.R
 diff_tab_big <- read_tsv('data/diff_tab_big.tsv.gz')
+down_tab_big <- read_tsv('data/down_tab_big.tsv.gz')
 gene_tab <- bind_rows(read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz'), read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz'))
 diff_tab <- diff_tab_big %>% 
   filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique())) 
@@ -441,8 +443,8 @@ consist_diff %>% group_by(Base) %>% summarise(Count = n())
 consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 ```
 
-```{r, fig.height=9, fig.width=7}
-g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=5, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
+```{r, fig.height=11, fig.width=6}
+g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
 
 test <- scEiaD_2020_v01 %>%
   tbl("diff_testing") %>%
@@ -483,24 +485,49 @@ ComplexHeatmap::draw(hm, padding = unit(c(2, 2, 30, 2), "mm"))
 ```
 
 ## Tease apart closely related cell types
+
+Neurogenic and RPC have very similar expression patterns. We leverage our more specific differential test to directly assess genes were are different between neurogenic cells and RPC. We show the top 5 genes that are both more highly expressed in RPC relative to neurogenic cell and vice versa.
 ```{r}
-x <- scEiaD_2020_v01 %>% 
-  tbl("diff_testing") %>% 
-  filter(Base %in% c("Early RPC", "Late RPC", "RPC")) %>%  
-  filter(Group == 'CellType (Predict)', 
-         Against %in% c("Early RPC", "Late RPC", "RPC")) %>% 
+x <-  scEiaD_2020_v01 %>% 
+    tbl("diff_testing") %>% 
+    filter(Against  == "RPC",   
+           Group == 'CellType (Predict)', 
+           Base == "Neurogenic Cell") %>% 
   group_by(Base, Against, Gene) %>% 
-  summarise(`mean log2FC` = mean(log2FoldChange), `mean padj` = mean(padj), `sig count` = sum(pvalue < 1e-3)) %>% 
+  summarise(`mean log2FC` = mean(log2FoldChange), `mean padj` = mean(padj), `sig count` = sum(pvalue < 1e-2), `na count` = sum(is.na(log2FoldChange))) %>% 
   arrange(-`mean log2FC`) %>%   
   collect() %>% 
   filter(!is.na(`mean log2FC`))
 
 
-  mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
-  left_join(gene_tab, by = 'GENEID') %>% 
-  relocate(SYMBOL, GENEID) %>% 
-  dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
-  arrange(-`mean log2FC`)
+  # mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
+  # left_join(gene_tab, by = 'GENEID') %>% 
+  # relocate(SYMBOL, GENEID) %>% 
+  # dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
+  # arrange(-`mean log2FC`)
+  
+down <- x %>% filter(`sig count` > 1) %>% arrange(`mean padj`) %>% filter(`mean log2FC` < 0) %>% head(5) %>% pull(Gene)
+up <-  x %>% filter(`sig count` > 1) %>% arrange(`mean padj`) %>% filter(`mean log2FC` > 0) %>% head(5) %>% pull(Gene)
+source('src/make_exp_plot.R')
+
+input <- list()
+input$exp_plot_groups <- c('study_accession')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- down
+input$exp_filter_cat <- 'CellType_predict'
+#input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
+input$exp_filter_on <- c("Neurogenic Cell", "RPC" )
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+#input$exp_plot_ylab <- '% of Cells Detected'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+input$flip_facet <- TRUE
+
+a <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) 
+
+input$exp_plot_genes <- up
+b <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) 
+plot_grid(a,b, labels = c('a','b'))
 ```
 
 ```{r}
@@ -523,40 +550,61 @@ diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>%
 
 ```
 
-```{r}
+```{r, fig.width=3, fig.height=7}
 # flip flop diff genes
-down_tab <- scEiaD_2020_v01 %>% tbl('diff_testing') %>% 
-  filter(Group == 'CellType (Predict)', padj < 1e-5, (log2FoldChange) < -2) %>% 
-  collect() %>% 
-  filter(Against == 'All', Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType_predict) %>% unique())) %>% 
-  mutate(k = paste(Symbol, Base, sep = '_'))
+down_tab <- down_tab_big %>% 
+   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
+  filter(Base %in% ws_oct, 
+         Against == 'All')
 
-diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>% 
-  filter(k %in% down_tab$k, Base %in% c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )) %>% 
-  arrange(padj)
+org_diff_diff_genes <- diff_tab_big %>% 
+  mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
+  filter(gene_ct_combo %in% down_tab$gene_ct_combo, 
+         Against == 'All') %>% 
+  arrange(padj) %>% mutate(x = paste0(Symbol, ' (', ID, ')')) 
 
-diff_tab_big %>% 
-  filter(Symbol %in% diff_tab$Symbol) %>% # only retain diff genes across "All"
-  group_by(Symbol, Base, Organism) %>% 
-  summarise(Count = n()) %>% 
-  filter(Count > 8, Base == 'Rod') %>% arrange(-Count)
+genes <- scEiaD_2020_v01 %>% tbl('diff_testing_genes') %>% collect() %>% filter(grepl(org_diff_diff_genes %>% pull(ID) %>% paste0(., collapse = '|'), Gene)) %>% pull(Gene)
+test <- scEiaD_2020_v01 %>%
+  tbl("diff_testing") %>%
+  filter(Gene %in% genes) %>%
+  collect() %>%
+  mutate(Symbol = str_extract(Gene, '^\\w+ ') %>% gsub(' $', '', .)) %>% 
+  mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
+  filter(gene_ct_combo %in% org_diff_diff_genes$gene_ct_combo,
+         Group == 'CellType (Predict)',
+         Against == 'All') %>%
+  select(Gene, Organism, log2FoldChange, Base)
+
+x <- test %>% pivot_wider(values_from = log2FoldChange, names_from = Organism)
+organism <- colnames(x)[c(3,4,5)]
+x <- x %>% data.frame()
+row.names(x) <- paste0(x$Gene,'_', x$Base)
+
+x <- x[,-c(1,2)]
+
+
+
+genes <- row.names(x) %>% gsub(' \\(.*','',.)
+
+base_yo <- row.names(x) %>% gsub('.*_','',.) 
+
+
+hm <- ComplexHeatmap::Heatmap(x, column_labels = organism, 
+                              row_split = base_yo, show_row_dend = FALSE, 
+                              row_labels = genes, 
+                              column_title_rot = 90, 
+                              name = 'log2FC', use_raster = TRUE,
+                              row_title_rot = 0)
+hm
 ```
 
-```{r diff_difff_exp_genes, fig.height = 3, fig.width = 8, echo = F, message = F}
-source('src/make_exp_plot.R')
+```{r}
+library(enrichR)
+dbs <- c('GO_Biological_Process_2018', 'GO_Molecular_Function_2018')
+enriched_cone <- enrichr(org_diff_diff_genes %>% filter(Base == 'Rod') %>% pull(Symbol), dbs)
 
-input <- list()
-input$exp_plot_groups <- c('organism')
-input$exp_plot_facet <- c('CellType_predict')
-input$exp_plot_genes <- c('SCRG1 (ENSG00000164106)')
-input$exp_filter_cat <- 'CellType_predict'
-input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
-input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
-input$exp_plot_col_num <- 16
-input$exp_filter_min_cell_number <- 50
-
-make_exp_plot(input, scEiaD_2020_v01, meta_filter)
 ```
+
 
 
 To aid in in the analysis of ocular gene expression patterns we provide pre-computed differential tests run 
@@ -602,6 +650,7 @@ input$exp_plot_genes <- c('RHO (ENSG00000163914)')
 input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
 input$exp_plot_col_num <- 16
 input$exp_filter_min_cell_number <- 50
+input$flip_facet <- FALSE
 
 v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
 v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
