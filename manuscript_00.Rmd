@@ -411,6 +411,8 @@ ws_table <- meta_filter %>%
                                       TRUE ~ 'No'))
 ws_table %>% 
   flextable()
+
+diff_tab_sup %>% pivot_longer(-`CellType (Predict)`, names_to = 'Organism', values_to = 'Diff Gene Count') %>% ggplot(aes(x=`CellType (Predict)`, y = `Diff Gene Count`, fill = Organism )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip()
 ```
 
 ## Well supported ocular cell types identify 
@@ -441,6 +443,8 @@ consist_diff <- scEiaD_2020_v01 %>%
 uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
 consist_diff %>% group_by(Base) %>% summarise(Count = n())
 consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
+
+consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellTye (Predict)")
 ```
 
 ```{r, fig.height=11, fig.width=6}
@@ -478,16 +482,16 @@ hm <- ComplexHeatmap::Heatmap(x, column_labels = organism,
                               column_split = cts, 
                               row_split = base_yo, show_row_dend = FALSE, 
                               row_labels = genes, 
-                              column_title_rot = 90, 
+                              column_title_rot = 90, row_split
                               name = 'log2FC', use_raster = TRUE,
                               row_title_rot = 0)
-ComplexHeatmap::draw(hm, padding = unit(c(2, 2, 30, 2), "mm"))
+ComplexHeatmap::draw(hm, padding = unit(c(2, 2, 32, 2), "mm"), row_title = "Marker Genes")
 ```
 
 ## Tease apart closely related cell types
 
 Neurogenic and RPC have very similar expression patterns. We leverage our more specific differential test to directly assess genes were are different between neurogenic cells and RPC. We show the top 5 genes that are both more highly expressed in RPC relative to neurogenic cell and vice versa.
-```{r}
+```{r, fig.width=7, fig.height=3}
 x <-  scEiaD_2020_v01 %>% 
     tbl("diff_testing") %>% 
     filter(Against  == "RPC",   
@@ -530,25 +534,6 @@ b <- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
 plot_grid(a,b, labels = c('a','b'))
 ```
 
-```{r}
-# consistently diff genes
-consistent <- diff_tab %>% 
-  group_by(Symbol, Base)  %>% 
-  summarise(Count = n()) %>% 
-  filter(Count > 1) %>% 
-  mutate(k = paste(Symbol, Base, sep = '_'))
-
-diff_tab %>% mutate(k = paste(Symbol, Base, sep = '_')) %>% 
-  filter(k %in% consistent$k) %>% 
-  group_by(Base, Organism) %>% 
-  summarise(Count = n()) %>% 
-  rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
-  pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
-  as_tibble() %>% 
-  flextable()
-
-
-```
 
 ```{r, fig.width=3, fig.height=7}
 # flip flop diff genes
@@ -589,13 +574,13 @@ genes <- row.names(x) %>% gsub(' \\(.*','',.)
 base_yo <- row.names(x) %>% gsub('.*_','',.) 
 
 
-hm <- ComplexHeatmap::Heatmap(x, column_labels = organism, 
+hm_flipflop <- ComplexHeatmap::Heatmap(x, column_labels = organism, 
                               row_split = base_yo, show_row_dend = FALSE, 
                               row_labels = genes, 
                               column_title_rot = 90, 
                               name = 'log2FC', use_raster = TRUE,
                               row_title_rot = 0)
-hm
+hm_flipflop
 ```
 
 ```{r}
