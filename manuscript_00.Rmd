@@ -294,7 +294,7 @@ p_data <- meta_filter %>%
   #mutate(CellType_predict = case_when(!CellType_predict %in% ws_oct ~ 'Other',
   #                                    TRUE ~ CellType_predict)) %>% 
   filter(Organ == 'Eye') %>% 
-  mutate(Citation = paste(str_trunc(Citation, width = 20), str_trunc(batch, side = "left", width = 15))) %>% 
+  mutate(Citation = paste(str_trunc(Citation, width = 20), Covariate)) %>% 
   group_by(Citation, organism, Tissue, CellType_predict) %>% 
   summarise(Count = n()) %>% 
   mutate(Proportion = Count/sum(Count) * 100) 
