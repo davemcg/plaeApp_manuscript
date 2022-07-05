@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 tic()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -622,7 +622,7 @@ toc()
 ```{r}
 library(enrichR)
 dbs <- c('GO_Biological_Process_2018', 'GO_Molecular_Function_2018')
-enriched_cone <- enrichr(org_diff_diff_genes %>% filter(Base == 'Rod') %>% pull(Symbol), dbs)
+enriched <- enrichr(org_diff_diff_genes %>% filter(Base == 'Bipolar Cell') %>% pull(Symbol), dbs)
 
 ```
 
@@ -641,11 +641,11 @@ NR2E3, SLC24A1, PDE6H, GNAT1 for rods
 Also did RGC, Microglia, Astrocytes, Muller Glia
 
 
-## Projection of organoid data onto scEiaD demonstrates [SOMETHING]
+<!-- ## Projection of organoid data onto scEiaD demonstrates [SOMETHING] -->
 
-scEiaD is built using scvi-tool's scANVI batch correction tool. As part of the process a computational transcriptome model of the reference datasets are built. This model is only a few mb in size and can be used on a modest computer to project private scRNA datasets onto it. This allows an ocular researcher several important functionalities. First, the ability to check the quality control of an existing dataset by looking at the distribution of their cells overlapped with our labelled cell types. Second, in perturbation experiments, to identify unusual distributions of cells. Third, to leverage our extensive pre-labelled cell information to transfer cell type labels onto private data. 
+<!-- scEiaD is built using scvi-tool's scANVI batch correction tool. As part of the process a computational transcriptome model of the reference datasets are built. This model is only a few mb in size and can be used on a modest computer to project private scRNA datasets onto it. This allows an ocular researcher several important functionalities. First, the ability to check the quality control of an existing dataset by looking at the distribution of their cells overlapped with our labelled cell types. Second, in perturbation experiments, to identify unusual distributions of cells. Third, to leverage our extensive pre-labelled cell information to transfer cell type labels onto private data.  -->
 
-We demonstrate some of these possibilities by projecting two organoid datasets from X and Y. 
+<!-- We demonstrate some of these possibilities by projecting two organoid datasets from X and Y.  -->
 
 # Conclusions
 
