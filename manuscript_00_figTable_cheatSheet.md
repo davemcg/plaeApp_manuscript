@@ -12,3 +12,4 @@ decontX_cap <---- gigascience vs now rho expression (pre/post decontX)
 
 # supTab_cap
 studies_table <---- flextable with study, tissue, pmid, and cell num cols
+
