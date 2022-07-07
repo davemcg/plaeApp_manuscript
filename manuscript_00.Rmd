@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 tic()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -79,10 +79,14 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
          study_accession = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'SRP329495',
                                      TRUE ~ study_accession))
 
+
+load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
+
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
-load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
+
+
 toc()
 ```
 
@@ -145,7 +149,7 @@ Our first version of the single cell Eye is a Disk (scEiaD) database contained `
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we make the first data table on the loading page of plae.nei.nih.gov list each of these studies along with a direct link to their citation, where possible. 
 
 ```{r scEiaD_data_overview, fig.height = 35, fig.width = 25, echo = F, message = F, fig.cap=scEiaD_data_overview_cap}
-tic()
+
 num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
@@ -563,13 +567,13 @@ input$exp_plot_col_num <- 16
 input$exp_filter_min_cell_number <- 50
 input$flip_facet <- TRUE
 
-exp_plot_giga<- make_exp_plot(input, scEiaD_2020_v01, meta_filter) 
+exp_plot_down <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) 
 
 input$exp_plot_genes <- up
-exp_plot_iovs <- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
-a_legend <- get_legend(exp_plot_giga)
-plot_grid(plot_grid(exp_plot_giga + theme(legend.position="none") + xlab(''),
-          exp_plot_iovs + theme(legend.position="none") + ylab('') + xlab(''), labels = c('a','b')),
+exp_plot_up <- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+a_legend <- get_legend(exp_plot_down)
+plot_grid(plot_grid(exp_plot_down + theme(legend.position="none") + xlab(''),
+          exp_plot_up + theme(legend.position="none") + ylab('') + xlab(''), labels = c('a','b')),
           a_legend, ncol = 1, rel_heights = c(1,0.2))
 #toc()
 ```
