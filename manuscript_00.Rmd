@@ -479,7 +479,7 @@ consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summar
 #toc()
 ```
 
-```{r, fig.height=11, fig.width=6}
+```{r, fig.height=24, fig.width=12}
 # tic()
 # g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
 # 
@@ -518,14 +518,15 @@ consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, column_labels = co
                               column_title_rot = 90, 
                               name = 'log2FC', use_raster = TRUE,
                               row_title_rot = 0)
-ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(2, 2, 32, 2), "mm"), row_title = "Marker Genes")
+ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
 #toc()
 ```
 
 ## Tease apart closely related cell types
 
 Neurogenic and RPC have very similar expression patterns. We leverage our more specific differential test to directly assess genes were are different between neurogenic cells and RPC. We show the top 5 genes that are both more highly expressed in RPC relative to neurogenic cell and vice versa.
-```{r, fig.width=9, fig.height=3}
+
+```{r, fig.width=15, fig.height=6, echo = F, message = F}
 # tic()
 # pairwise_neurogenic_test<-  scEiaD_2020_v01 %>% 
 #   tbl("diff_testing") %>% 
@@ -567,14 +568,15 @@ exp_plot_giga<- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
 input$exp_plot_genes <- up
 exp_plot_iovs <- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
 a_legend <- get_legend(exp_plot_giga)
-plot_grid(plot_grid(exp_plot_giga + theme(legend.position="none"),
-          exp_plot_iovs + theme(legend.position="none") + ylab(''), labels = c('a','b')),
+plot_grid(plot_grid(exp_plot_giga + theme(legend.position="none") + xlab(''),
+          exp_plot_iovs + theme(legend.position="none") + ylab('') + xlab(''), labels = c('a','b')),
           a_legend, ncol = 1, rel_heights = c(1,0.2))
 #toc()
 ```
 
 
-```{r, fig.width=3, fig.height=7}
+
+```{r, fig.width=5, fig.height=15, echo = F, message = F}
 # tic()
 # # flip_flop diff genes
 # down_tab <- down_tab_big %>% 

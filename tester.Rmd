@@ -1,0 +1,138 @@
+---
+title: 'PLAE enables quick and easy searching across one million ocular transcriptomes'
+author:
+  - Vinay Swamy:
+      institute: bg
+  - Zachary Batz:
+      institute: nnrl
+  - David McGaughey:
+      institute:
+        - bg
+      correspondence: "yes"
+      email: mcgaugheyd@mail.nih.gov
+institute:
+  - bg: Bioinformatics Group, Ophthalmic Genetics & Visual Function Branch, National Eye Institute, National Institutes of Health
+  - nnrl: Neurobiology, Neurodegeneration & Repair Laboratory, National Eye Institute, National Institutes of Health
+  - mgog: Medical Genetics and Ophthalmic Genomics Unit, National Eye Institute, National Institutes of Health
+
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  word_document:
+    reference_docx: word-styles-reference-01.docx
+    fig_caption: yes
+    pandoc_args:
+      - '--lua-filter=scholarly-metadata.lua'
+      - '--lua-filter=author-info-blocks.lua'
+bibliography: zotero_plaeApp.bib
+csl: investigative-ophthalmology-and-visual-science.csl
+abstract: "PURPOSE: To create a high performance reactive web application to query gene expression across cell type, species, study, and other factors. METHODS: We updated the content and structure of the underlying data (sc Eye in a Disk, scEiaD) and wrote the web application PLAE (https://plae.nei.nih.gov) to visualize and explore it. RESULTS: The new portal provides quick visualization of over a million individual cells from vertebrate eye-and body transcriptomes, XX cell types, XX ocular tissues, XX body tissues. As a test of the value of this unified pan-eye dataset, we show XX. CONCLUSION: The PLAE v0.91 web app serves the pan-ocular and body dataset, scEiaD. This offers the eye community a powerful and quick means to test hypotheses on gene and transcript expression across 54 body and 19 eye tissues. "
+
+keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
+---
+
+```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
+#knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
+knitr::opts_chunk$set(out.width = '100%', dpi=300)
+library(tidyverse)
+library(citr)
+library(cowplot)
+library(ggrepel)
+library(colorspace)
+library(flextable)
+library(captioner)
+library(glue)
+library(tictoc)
+tic()
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+# setup caption-ing
+fig_cap <- captioner("Figure")
+supFig_cap <- captioner("Supplemental Figure")
+tab_cap <- captioner("Table")
+supTab_cap <- captioner("Supplemental Table")
+
+library(pool)
+library(RSQLite)
+meta_filter_v0 <- fst::read_fst(glue("{data_dir_vGiga}/paper_data/2021_03_17_meta_filter.fst")) %>% 
+  
+  mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType_predict),
+         CellType= case_when(CellType == 'AC/HC_Precurs' ~ 'AC/HC Precursor',
+                             TRUE ~ CellType))
+
+meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filter(study_accession != 'Bharti_Nguyen_iRPE_2D_3D') %>% 
+  
+  mutate(CellType_predict = case_when(CellType_predict == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
+                                      TRUE ~ CellType_predict),
+         CellType= case_when(CellType == 'AC/HC_Precursor' ~ 'AC/HC Precursor',
+                             TRUE ~ CellType),  
+         Tissue = case_when(grepl('Iris', Tissue) ~ 'Iris',
+                            TRUE ~ Tissue),
+         Tissue = case_when(grepl('^RPE|^Choroid', Tissue) ~ 'RPE-Choroid',
+                            TRUE ~ Tissue),
+         Citation = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'Swamy VS, Fufa TD, Hufnagel RB, McGaughey DM Building the Mega Single Cell Transcriptome Ocular Meta-Atlas Gigascience 2021 Oct 13;10(10)',
+                              TRUE ~ Citation),
+         PMID = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ '34651173',
+                          TRUE ~ PMID),
+         study_accession = case_when(study_accession == 'OGVFB_Hufnagel_iPSC_RPE' ~ 'SRP329495',
+                                     TRUE ~ study_accession))
+
+scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
+
+load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
+toc()
+```
+
+
+```{r, fig.width=4, fig.height=15, echo = F, message = F}
+# tic()
+# # flip_flop diff genes
+# down_tab <- down_tab_big %>% 
+#   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
+#   filter(Base %in% ws_oct, 
+#          Against == 'All')
+# 
+# org_diff_diff_genes <- diff_tab_big %>% 
+#   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
+#   filter(gene_ct_combo %in% down_tab$gene_ct_combo, 
+#          Against == 'All') %>% 
+#   arrange(padj) %>% mutate(x = paste0(Symbol, ' (', ID, ')')) 
+# 
+# flip_flop_genes <- scEiaD_2020_v01 %>% tbl('diff_testing_genes') %>% collect() %>% filter(grepl(org_diff_diff_genes %>% pull(ID) %>% paste0(., collapse = '|'), Gene)) %>% pull(Gene)
+# flip_flop_long <- scEiaD_2020_v01 %>%
+#   tbl("diff_testing") %>%
+#   filter(Gene %in% genes) %>%
+#   collect() %>%
+#   mutate(Symbol = str_extract(Gene, '^\\w+ ') %>% gsub(' $', '', .)) %>% 
+#   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
+#   filter(gene_ct_combo %in% org_diff_diff_genes$gene_ct_combo,
+#          Group == 'CellType (Predict)',
+#          Against == 'All') %>%
+#   select(Gene, Organism, log2FoldChange, Base)
+# 
+# flip_flop_wide <- flip_flop_long %>% pivot_wider(values_from = log2FoldChange, names_from = Organism)
+# flip_flop_organism <- colnames(flip_flop_wide)[c(3,4,5)]
+# flip_flop_wide <- flip_flop_wide %>% data.frame()
+# row.names(flip_flop_wide) <- paste0(flip_flop_wide$Gene,'_', flip_flop_wide$Base)
+# 
+# flip_flop_wide <- flip_flop_wide[,-c(1,2)]
+# 
+# 
+# 
+# flip_flop_genes <- row.names(flip_flop_wide) %>% gsub(' \\(.*','',.)
+# 
+# flip_flop_base <- row.names(flip_flop_wide) %>% gsub('.*_','',.) 
+
+
+hm_flipflop <- ComplexHeatmap::Heatmap(flip_flop_wide, column_labels = flip_flop_organism, 
+                                       row_split = flip_flop_base, show_row_dend = FALSE, 
+                                       row_labels = flip_flop_genes, 
+                                       column_title_rot = 90, 
+                                       name = 'log2FC', use_raster = TRUE,
+                                       row_title_rot = 0)
+hm_flipflop
+#toc()
+```
