@@ -9,10 +9,10 @@ library(glue)
 library(tictoc)
 
 tic()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 
 
 library(pool)
@@ -259,7 +259,7 @@ org_diff_diff_genes <- diff_tab_big %>%
 flip_flop_genes <- scEiaD_2020_v01 %>% tbl('diff_testing_genes') %>% collect() %>% filter(grepl(org_diff_diff_genes %>% pull(ID) %>% paste0(., collapse = '|'), Gene)) %>% pull(Gene)
 flip_flop_long <- scEiaD_2020_v01 %>%
   tbl("diff_testing") %>%
-  filter(Gene %in% genes) %>%
+  filter(Gene %in% flip_flop_genes) %>%
   collect() %>%
   mutate(Symbol = str_extract(Gene, '^\\w+ ') %>% gsub(' $', '', .)) %>% 
   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
@@ -291,3 +291,4 @@ flip_flop_base <- row.names(flip_flop_wide) %>% gsub('.*_','',.)
 # hm_flipflop
 toc()
 
+save.image(file = 'data/diff_data_pull.Rdata')
