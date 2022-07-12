@@ -82,57 +82,28 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
-load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
+#load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 toc()
 ```
 
+```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=web_resources_cap}
+#tic()()
+i = 16.5 # width of the side borders in the word_document output (in centimeters)
+w = i*0.3937 # width of the side borders in the word_document output (in inches)
+ 
+ 
+web_resources_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
 
-```{r, fig.width=4, fig.height=15, echo = F, message = F}
-# tic()
-# # flip_flop diff genes
-# down_tab <- down_tab_big %>% 
-#   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
-#   filter(Base %in% ws_oct, 
-#          Against == 'All')
-# 
-# org_diff_diff_genes <- diff_tab_big %>% 
-#   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
-#   filter(gene_ct_combo %in% down_tab$gene_ct_combo, 
-#          Against == 'All') %>% 
-#   arrange(padj) %>% mutate(x = paste0(Symbol, ' (', ID, ')')) 
-# 
-# flip_flop_genes <- scEiaD_2020_v01 %>% tbl('diff_testing_genes') %>% collect() %>% filter(grepl(org_diff_diff_genes %>% pull(ID) %>% paste0(., collapse = '|'), Gene)) %>% pull(Gene)
-# flip_flop_long <- scEiaD_2020_v01 %>%
-#   tbl("diff_testing") %>%
-#   filter(Gene %in% genes) %>%
-#   collect() %>%
-#   mutate(Symbol = str_extract(Gene, '^\\w+ ') %>% gsub(' $', '', .)) %>% 
-#   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
-#   filter(gene_ct_combo %in% org_diff_diff_genes$gene_ct_combo,
-#          Group == 'CellType (Predict)',
-#          Against == 'All') %>%
-#   select(Gene, Organism, log2FoldChange, Base)
-# 
-# flip_flop_wide <- flip_flop_long %>% pivot_wider(values_from = log2FoldChange, names_from = Organism)
-# flip_flop_organism <- colnames(flip_flop_wide)[c(3,4,5)]
-# flip_flop_wide <- flip_flop_wide %>% data.frame()
-# row.names(flip_flop_wide) <- paste0(flip_flop_wide$Gene,'_', flip_flop_wide$Base)
-# 
-# flip_flop_wide <- flip_flop_wide[,-c(1,2)]
-# 
-# 
-# 
-# flip_flop_genes <- row.names(flip_flop_wide) %>% gsub(' \\(.*','',.)
-# 
-# flip_flop_base <- row.names(flip_flop_wide) %>% gsub('.*_','',.) 
-
-
-hm_flipflop <- ComplexHeatmap::Heatmap(flip_flop_wide, column_labels = flip_flop_organism, 
-                                       row_split = flip_flop_base, show_row_dend = FALSE, 
-                                       row_labels = flip_flop_genes, 
-                                       column_title_rot = 90, 
-                                       name = 'log2FC', use_raster = TRUE,
-                                       row_title_rot = 0)
-hm_flipflop
-#toc()
+feature_table <- rbind(
+  c('PLAE','Yes','Yes', 'Yes', '1136 ', 'https://plae.nei.nih.gov'),
+  c('Spectacle', 'Yes' ,'No', 'No', '1500', 'https://singlecell-eye.org'),
+  c('UCSC Cell Browser', 'Yes', 'No', 'Yes', '62', 'https://cells.ucsc.edu' ),
+  c('Tabula Sapiens', 'No', 'N/A', 'Yes', '10', 'https://tabula-sapiens-portal.ds.czbiohub.org'),
+  c('PanglaoDB', 'Yes', 'No', 'Yes', '47', 'https://panglaodb.se'),
+  c('Protein Atlas', 'Yes*','No', 'Yes', '5',  'https://www.proteinatlas.org/humanproteome/celltype')) %>% 
+  as_tibble()
+colnames(feature_table) <- c('Resource Name', 'Independent\nDatasets', 'Harmonization', 'Ocular and\nnon-Ocular\n Data', 'Ocular Cell\nCount\n(thousands)', 'URL')
+feature_table %>% flextable() %>%  fontsize(size = 10, part = 'all') %>% autofit() %>% fit_to_width(7)#width(., width = c(1,0.75,0.75,0.75,0.75,3))
+# as of 2021 10 25
+#toc()()
 ```

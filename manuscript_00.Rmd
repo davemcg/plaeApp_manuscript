@@ -42,11 +42,11 @@ library(flextable)
 library(captioner)
 library(glue)
 library(tictoc)
-tic()
-#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#tic()()
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -87,27 +87,17 @@ scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPL
 
 
 
-toc()
+#toc()
 ```
 
 
 
 # Introduction
   
-  Examples of single cell transcriptomics the retina date begin in the early 2000s where researchers [@hagstrom_cone_2000; @jabs_evidence_2000; @li_localization_2004; @lindqvist_single_2002-1; @reid_retinoschisin_2003] generally used RT-PCR approaches to amplify select transcripts in individual cells. Later, researchers used microarray platforms to analyze a broader array of transcripts researchers [@cherry_development_2009; @gustincich_gene_2004-1; @kim_identification_2008-1; @roesch_transcriptome_2008; @trimarchi_individual_2008; @trimarchi_molecular_2007-1; @wahlin_method_2004]. The modern era of single cell transcriptomics is denoted by the introduction of droplet-based technologies , which enabled quantitation of thousands of cells in a single experiment; in Macoksko et al. the adult mouse retina was profiled [@klein_droplet_2015; @macosko_highly_2015]. The commercialization of the droplet approach has enabled broad access to this technology and the ocular community have responded by producing over 30 single cell transcriptome based studies of the eye since the Macosko publication. 
-  These publications's foci includes, but is not limited to, studying developmental transcriptomic dynamics, identifying genes to distinguish core cell types, proposing finer gradations of cell types within existing categories, and comparing ocular transcriptomes between organisms. Outside querying of these datasets often requires a long series of steps. Briefly, one would have to identify the relevant publication, find the associated data deposit, download the cell - count matrix, find the cell label table (and optionally the t-SNE or UMAP coordinates), and then load the data into R or python to run the desired queries. If one desired to compare *across* publications, then one would also have to normalize the cell type labels and optionally run a batch-effect removal algorithm. It is desirable, perhaps even necessary, to use multiple datasets to assess gene expression to confirm whether a gene expression is consistent and reproducible. Reliance on a single dataset can be problematic as there can be technical issues - for example the large consortium dataset GTEx has persistant contamination from highly expressed genes across tissues [@nieuwenhuis_consistent_2020]. 
-  Web-based resources to query gene expression are powerful means to democratize access to large datasets as the computationally intensive steps above can be run once and then shared to all. Single cell RNA-seq resources that contain ocular tissues include the UCSC Cell Browser, Tabula Muris, PanglaoDB, and the Protein Atlas [@franzen_panglaodb_2019; @karlsson_singlecell_2021; @noauthor_single-cell_nodate; @speir_ucsc_2021]. Primary limitations to these resources include incomplete cell type labels and sample metadata that make ocular focused queries challenging. The Spectacle project is an ocular specific web app which has curated over a million cells from dozens of independent resources [@voigt_spectacle_2020]. Each data deposit is independently presented, which makes cross study queries difficult. We recently created a unified ocular resource which placed dozens of independent single-cell RNA-seq ocular and non-ocular datasets in a single combined space [@swamy_building_2021]. We have built upon this dataset, adding more datasets, improving the quality control, removing ambient noise, improved the differential gene testing structure, and finally created a powerful, reactive, and fast web app to query the database. We demonstrate how this unified resource can be used to identify genes that consistently distinguish cell types across studies and species, genes which have species-specific expression cell type patterning, propose genes XYZ differentially expressed between the fovea and peripheral cones, and 
-
-## Web atlases containing ocular data have substantial limitations
-
-Data difficult to access and cross comparisons impossible
-
-But important as seeing trends trends across different groups strongly demonstrates that 
-the signal is biological, not technical. 
-
-## What we did
-
-We published the ocular focused scEiaD v2021 resource in 2021, which was one of the first single cell meta-atlases. To broaden the usage of this powerful database, we restructured the data in a custom sqlite-based database and built a reactive web application around it. As many new studies were published since our last data build, we re-ran the scEiaD pipeline in March of 2022. In aggregate we have collated `r meta_filter$study_accession %>% unique() %>% length()` studies across `r meta_filter$PMID %>% unique() %>% length()` publications, four species, and `r meta_filter$Tissue %>% unique() %>% length()` tissues. We hand-curated `r meta_filter$CellType %>% unique() %>% length()` cell types, totaling `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` cells and used those ground-truth labels as the basis for a machine learning-based algorithm which labels the remaining cells. Extensive quality control metrics were tuned and applied to remove lower quality cells. In the end, the single cell Eye in a Disk (scEiaD) database contains `r meta_filter %>% nrow()` cells and 1,509,179,347 non-zero gene/cell expression values. 
+  Single cell transcriptomics of the retina date to the early 2000s when researchers [@hagstrom_cone_2000; @jabs_evidence_2000; @li_localization_2004; @lindqvist_single_2002-1; @reid_retinoschisin_2003] used RT-PCR approaches to amplify select transcripts in small numbers of cells. Later, researchers used microarray platforms to analyze a broader array of transcripts [@cherry_development_2009; @gustincich_gene_2004-1; @kim_identification_2008-1; @roesch_transcriptome_2008; @trimarchi_individual_2008; @trimarchi_molecular_2007-1; @wahlin_method_2004]. The modern era of single cell transcriptomics is marked by the introduction of droplet-based technologies, which enabled quantitation of thousands of cells in a single experiment; in Macoksko et al. the adult mouse retina was profiled [@klein_droplet_2015; @macosko_highly_2015]. The commercialization of the droplet approach has enabled broad access to this technology and the ocular community have responded by publishing several dozen ocular studies using single cell transcriptome technology since Macosko publication. 
+  These publications's foci includes, but is not limited to, studying developmental transcriptomic dynamics, identifying genes to distinguish core cell types, proposing finer gradations of cell types within existing categories, and comparing ocular transcriptomes between organisms. Independent querying of these datasets requires a labrious series of steps. Briefly, one would have to identify the relevant publication, find the associated data deposit, download the cell - count matrix, find the cell label table (and optionally the t-SNE or UMAP coordinates), and then load the data into R or python to run the desired queries. If one desired to compare *across* publications, then one would also have to normalize the cell type labels and would likely have to re-quantify the counts with consistent bioinformatic tooling and run a batch-effect removal algorithm. It is desirable, perhaps even necessary, to use multiple datasets to assess gene expression to confirm whether a gene expression is consistent and reproducible. Reliance on a single dataset can be problematic as there can be technical issues - for example the large consortium dataset GTEx has persistent contamination from highly expressed genes across tissues [@nieuwenhuis_consistent_2020]. 
+  Web-based resources to query gene expression are powerful means to democratize access to large datasets as the computationally intensive steps above can be run once and then shared to anyone with a internet connected device. Single cell RNA-seq web resources that contain ocular tissues include the UCSC Cell Browser, Tabula Muris, PanglaoDB, and the Protein Atlas [@franzen_panglaodb_2019; @karlsson_singlecell_2021; @noauthor_single-cell_nodate; @speir_ucsc_2021]. Primary limitations to these resources include incomplete cell type labels and sample metadata that make ocular focused queries challenging. In contrast to these, the Spectacle resource is an ocular specific web app which has curated over a million cells from dozens of independent resources [@voigt_spectacle_2020]. However each data deposit is independently processed, which makes cross study queries difficult. We recently created a unified ocular data resource which placed dozens of independent single-cell RNA-seq ocular and non-ocular datasets in a single combined space [@swamy_building_2021]. 
+  To broaden the usage of this powerful database, we restructured the data into a custom sqlite-based database and built a reactive web application around it. As many new studies were published since our last data build, we re-ran the scEiaD pipeline in March of 2022. In aggregate we have collated `r meta_filter$study_accession %>% unique() %>% length()` studies across `r meta_filter$PMID %>% unique() %>% length()` publications, four species, and `r meta_filter$Tissue %>% unique() %>% length()` tissues. We hand-curated `r meta_filter$CellType %>% unique() %>% length()` cell types, totaling `r meta_filter %>% filter(!is.na(CellType)) %>% nrow()` cells and used those ground-truth labels as the basis for a machine learning-based algorithm which labels the remaining cells. Extensive quality control metrics were tuned and applied to remove lower quality cells. In the end, the single cell Eye in a Disk (scEiaD) database contains `r meta_filter %>% nrow()` cells and 1,509,179,347 non-zero gene/cell expression values. We demonstrate how this unified resource can be used to identify genes that consistently distinguish cell types across studies and species, genes which have species-specific expression cell type patterning, and finally propose genes XYZ that differentially expressed between the fovea and peripheral cones.  
 
 # Methods
 
@@ -148,12 +138,12 @@ Our first version of the single cell Eye is a Disk (scEiaD) database contained `
 
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we make the first data table on the loading page of plae.nei.nih.gov list each of these studies along with a direct link to their citation, where possible. 
 
-```{r scEiaD_data_overview, fig.height = 35, fig.width = 25, echo = F, message = F, fig.cap=scEiaD_data_overview_cap}
+```{r scEiaD_data_overview, fig.height = 16, fig.width = 20, echo = F, message = F, fig.cap=scEiaD_data_overview_cap}
 
 num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
-scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types."))
+scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types. D. Proportion of cell types (predicted) across each study (split by species and tissue)."))
 
 # organ
 meta_filter <- meta_filter %>% mutate(organism = factor(organism, levels = meta_filter$organism %>% unique()))
@@ -255,7 +245,11 @@ d <- meta_filter %>% filter(Organ == 'Eye') %>%
   scale_y_continuous(expand = c(0, 0)) + xlab('')
 
 
-a_aa_b <- plot_grid(a,aa,b, ncol = 1, align = 'hv', rel_heights = c(10, 1.5,3.5), labels = 'a')
+a_aa_b <- plot_grid(a + scale_y_continuous(guide = guide_axis(check.overlap = TRUE)),
+                    aa + scale_y_continuous(guide = guide_axis(check.overlap = TRUE)),
+                    b + scale_y_continuous(guide = guide_axis(check.overlap = TRUE)), 
+                    ncol = 1, align = 'hv', rel_heights = c(10, 1.5,3.5), labels = 'a')
+org_legend <- get_legend(d)
 c_d <- plot_grid(c,d + theme(legend.position = "none"), rel_heights = c(3,10), ncol = 1, align= 'hv', axis = 'l',labels = c('b','c'))
 
 
@@ -298,7 +292,8 @@ p_data <- meta_filter %>%
   #mutate(CellType_predict = case_when(!CellType_predict %in% ws_oct ~ 'Other',
   #                                    TRUE ~ CellType_predict)) %>% 
   filter(Organ == 'Eye') %>% 
-  mutate(Citation = paste(str_trunc(Citation, width = 20), str_trunc(Covariate, width = 12, side = 'left',ellipsis = ''))) %>% 
+  #mutate(Citation = paste(str_trunc(Citation, width = 20), str_trunc(Covariate, width = 12, side = 'left',ellipsis = ''))) %>% 
+  mutate(Citation = str_trunc(Citation, width = 20)) %>% 
   group_by(Citation, organism, Tissue, CellType_predict) %>% 
   summarise(Count = n()) %>% 
   mutate(Proportion = Count/sum(Count) * 100) 
@@ -327,21 +322,24 @@ proportion_bar_plot <- p_data %>% ggplot(aes(y=Citation,x=Proportion,fill=CellTy
   guides(fill=guide_legend(ncol =1))
 
 
-e <- plot_grid(proportion_bar_plot, labels = c('d'))
-
-plot_grid(a_aa_b, c_d , e, ncol = 3, rel_widths = c(1,1.6, 2.2))
-toc()
+e <- plot_grid(proportion_bar_plot+ theme(legend.position = "none"), labels = c('d'))
+ct_legend <- get_legend(proportion_bar_plot)
+fig_overview_legends <- plot_grid(org_legend, ct_legend,ncol=1)
+plot_grid(a_aa_b, c_d , e ,
+          fig_overview_legends, ncol =4, rel_widths = c(1,1.6, 2.2, 0.8))
+#toc()()
 ```
 
 
 ## scRNA web resources containing ocular data
 
-Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources_cap', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingress-ed a large number of published single cell datasets The UCSC Cell Browser has around 62 thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse and thus the ocular data present, though relatively small (at around 10 thousand), can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource, which has aggregated protein labels (????) information has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has selected a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the metadata, re-processing of the data from the raw sequence, and, most crucially, integrating the independent studies to deliver cross study comparisons. 
+Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources_cap', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingressed a large number of published single cell datasets The UCSC Cell Browser has around sixty thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse; while it only contains around around 10 thousand ocular cells it can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has selected a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the cell and sample level metadata, re-processing of the data from the raw sequence, and, most crucially, integrating the independent studies to deliver cross study comparisons. 
+
 
 ```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=web_resources_cap}
-tic()
+#tic()()
 i = 16.5 # width of the side borders in the word_document output (in centimeters)
- w = i*0.3937 # width of the side borders in the word_document output (in inches)
+w = i*0.3937 # width of the side borders in the word_document output (in inches)
  
  
 web_resources_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
@@ -354,10 +352,10 @@ feature_table <- rbind(
   c('PanglaoDB', 'Yes', 'No', 'Yes', '47', 'https://panglaodb.se'),
   c('Protein Atlas', 'Yes*','No', 'Yes', '5',  'https://www.proteinatlas.org/humanproteome/celltype')) %>% 
   as_tibble()
-colnames(feature_table) <- c('Resource Name', 'Independent Datasets', 'Harmonization', 'Ocular and non-Ocular Data', 'Ocular Cell Count\n(thousands)', 'URL')
-feature_table %>% flextable() %>% width(., width = (w/(ncol(feature_table)))) 
+colnames(feature_table) <- c('Resource Name', 'Independent\nDatasets', 'Harmonization', 'Ocular and\nnon-Ocular\n Data', 'Ocular Cell\nCount\n(thousands)', 'URL')
+feature_table %>% flextable() %>%  fontsize(size = 10, part = 'all') %>% autofit() %>% fit_to_width(7)#width(., width = c(1,0.75,0.75,0.75,0.75,3))
 # as of 2021 10 25
-toc()
+#toc()()
 ```
 
 ## PLAE differs from a complementary web app, Spectacle in several important ways
@@ -376,13 +374,14 @@ For users interested in seeing how expression of a gene relates to study or othe
 
 While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can use powerful filtering options to only display data from certain metadata characteristics, like species or publication (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`d).
 
-#```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
-
-#```
+```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
+PLAE_screenshots_cap <- fig_cap(name='PLAE_screenshots', caption = 'Screenshots from PLAE app. A. UMAP view showing CRX expression with cell type labels, B. Information table showing expression of Crx across celltypes and organism. C. Box plot of selected genes in a user selected cell types across different studies. D. In silico in-situ of Rho. E. Dotplot demonstating efficient display of gene expression across many cell types.')
+knitr::include_graphics('fig/fig1.png')
+```
 
 ## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types
 
-We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The created a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices and thus allowing for mature bulk RNA-seq tooling to be used. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was con structured, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). For the one against all testing, we 
+We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The created a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices and thus allowing for mature bulk RNA-seq tooling to be used. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was constructed, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). For the one against all testing, we 
 
 ```{r, fig.width=12}
 # tic()
@@ -662,9 +661,9 @@ Also did RGC, Microglia, Astrocytes, Muller Glia
 
 ## PLAE provides quick access to over one million transcriptomes across 35 studies
 
-## Projection of outside data onto scEiaD allows for ... (check lung atlas paper)
+## Improvements in data processing ...
 
-## 
+## The data underlying PLAE is available in several forms to enable custom queries
 
 
 
