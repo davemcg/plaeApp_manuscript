@@ -119,7 +119,7 @@ Every study brought into scEiaD was hand curated to identify unique biological s
 
 ## Differential gene testing
 
-The scater::aggregateAcrossCells function was used to aggregate gene counts across species, study accession, and [category] where category was either Cluster, CellType, or CellType (Predict) assignments for a cell. If there were fewer than 50 cells in organism - study accession - category combination, they were discarded for the differential test. Any genes with a sum of 0 counts after aggregation were removed. The aggregated matrix was imported into DESeq2 using the DESeqDataSetFromMatrix function with the design given as "~study_accession + [category]". Contrasts were extracted either with the target category (e.g. "Cone") against all remaining or in a pair wise manner ("Cone" vs "Rod") with the DESeq2 "results" function. Genes were considered to be differentially expressed if they have a padj less than $1 x 10^-5 and a abs(log2FoldChange) > 2. To enhance the specificity of the 
+The scater::aggregateAcrossCells function was used to aggregate gene counts across species, study accession, and [category] where category was either Cluster, CellType, or CellType (Predict) assignments for a cell. If there were fewer than 50 cells in organism - study accession - category combination, they were discarded for the differential test. Any genes with a sum of 0 counts after aggregation were removed. The aggregated matrix was imported into DESeq2 using the DESeqDataSetFromMatrix function with the design given as "~study_accession + [category]". Contrasts were extracted either with the target category (e.g. "Cone") against all remaining or in a pair wise manner ("Cone" vs "Rod") with the DESeq2 "results" function. Genes were considered to be significantly differentially expressed if they have a padj less than $1 x 10^-5 and a abs(log2FoldChange) > 2. 
 
 
 ## scEiaD structure and web app optimization
@@ -381,74 +381,16 @@ knitr::include_graphics('fig/fig1.png')
 
 ## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types
 
-We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping. The created a counts matrix which has statistical properties matching that of "bulk" RNA seq experiment matrices and thus allowing for mature bulk RNA-seq tooling to be used. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the aggregated matrix was constructed, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. We had an insufficient number of chick studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). For the one against all testing, we 
+We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping (see Methods). This created a counts matrix which has statistical properties approximating "bulk" RNA seq experiment matrices. This allowed use to use the more mature bulk RNA-seq tooling. This approach has been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments [@squairConfrontingFalseDiscoveries2021]. Once the pseudo-bulk matrix was constructed, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. Chicken was not included as we had an insufficient number of independent studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). Unless stated otherwise, we will be discussing the results of the "against all" contrast for the remainder of the paper. 
 
-```{r, fig.width=12}
-# tic()
-# # number of celltype (predict) - organism - study counts (with >=50 cells)
-# # ws == Well Supported
-# ws_table <- meta_filter %>%  
-#   filter(Organ == 'Eye') %>% 
-#   group_by(organism, CellType_predict, study_accession) %>% 
-#   count() %>% 
-#   filter(n >= 50) %>% 
-#   ungroup() %>% 
-#   group_by(organism, CellType_predict) %>% 
-#   count() %>% 
-#   pivot_wider(values_from = n, names_from = organism) %>% 
-#   filter(!is.na(CellType_predict)) %>% 
-#   replace(is.na(.), values = 0) %>% 
-#   arrange(CellType_predict) %>% 
-#   rename(`CellType (Predict)` = CellType_predict) %>% 
-#   mutate(`Well Supported` = case_when(`Homo sapiens` >= 2 & `Mus musculus` >= 2 ~ 'Yes',
-#                                       TRUE ~ 'No'))
-# 
-# # fix  occasional NA
-# # data made from src/ensdb.R
-# diff_tab_big <- read_tsv('data/diff_tab_big.tsv.gz')
-# down_tab_big <- read_tsv('data/down_tab_big.tsv.gz')
-# gene_tab <- bind_rows(read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz'), read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz'))
-# diff_tab <- diff_tab_big %>% 
-#   filter(Against == 'All', 
-#          Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% 
-#                       pull(CellType) %>% unique()))
-# 
-# 
-# diff_tab_sup <- diff_tab %>% 
-#   group_by(Base, Organism) %>% 
-#   summarise(Count = n()) %>% 
-#   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
-#   pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
-#   as_tibble()
-# 
-# diff_tab_sup <- bind_rows(
-#   diff_tab_sup,
-#   ws_table$`CellType (Predict)`[!ws_table$`CellType (Predict)` %in% 
-#                                   diff_tab_sup$`CellType (Predict)`] %>% 
-#     enframe() %>% 
-#     select(`CellType (Predict)` = value) %>%
-#     mutate(`Homo sapiens` = 0, `Mus musculus` = 0, `Macaca fascicularis` = 0) %>% 
-#     arrange(`CellType (Predict)`)
-# )
-# 
-# write_csv(diff_tab, file = 'supplemental_files/differential_expression_table.csv.gz')
-
-diff_tab_sup %>% 
-  flextable()
-
-ws_table %>% 
-  flextable()
-
-diff_tab_barplot <- diff_tab_sup %>% 
-  pivot_longer(-`CellType (Predict)`, names_to = 'Organism', values_to = 'Diff Gene Count') %>% 
-  ggplot(aes(x=`CellType (Predict)`, y = `Diff Gene Count`, fill = Organism )) + 
-  geom_bar(stat='identity', position = 'dodge') + 
-  cowplot::theme_cowplot() + coord_flip()
-
-#toc()
-```
+Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltype combinations that are significantly differentially expressed. We define significant as a log2 fold change greater than two as well as a p-value (corrected) less than $1 x 10^-5. We find a mean of 
+`r diff_tab_sup$`Homo sapiens` %>% mean() %>% round()`, 
+`r diff_tab_sup$`Mus musculus` %>% mean() %>% round()`, and 
+`r diff_tab_sup$`Macaca fascicularis` %>% mean() %>% round()` differentially expressed genes in human, macaque, and mouse respectively (`r supTab_cap(name = 'diff_tab_sup_tab', display = 'cite')`). These variable results directly reflect the differing number of independent studies - mouse and human have substantially more than macaque (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). The full differential table is made available as supplementary file "differential_expression_table.csv.gz." While this differential expression table is large, it can be mined further to give more precise results.
 
 ## Well supported ocular cell types identify high confidence cell type markers
+
+Cell type marker genes can be proposed on the basis of existing knowledge about their function and/or based on high expression differences when comparing to other cell types. We can further narrow down the list of markers by using the  diersity of studies and organisms in scEiaD. We first identify a set of "well supported" cell types which we define as cell types which have two or more independent studies across both human and mouse (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). These 
 
 We filter down to only assess cell types with more than two independent datasets in both human and mouse. This leaves ..... These well supported cell types can be used to more strenuously identify genes that are consistently differentially expressed in a cell type across multiple species. To define these well supported marker genes we only ass
 
@@ -666,8 +608,84 @@ Also did RGC, Microglia, Astrocytes, Muller Glia
 ## The data underlying PLAE is available in several forms to enable custom queries
 
 
-
 # Supplementary Figures and Tables
+
+```{r diff_tab_sup_tab, echo = F, message = F, fig.cap=diff_tab_sup_cap}
+diff_tab_sup_cap <- supTab_cap(name='diff_tab_sup', caption = 'Counts of signifantly differentially expressed genes for each cell type across the organisms')
+
+# tic()
+# # number of celltype (predict) - organism - study counts (with >=50 cells)
+# # ws == Well Supported
+# ws_table <- meta_filter %>%  
+#   filter(Organ == 'Eye') %>% 
+#   group_by(organism, CellType_predict, study_accession) %>% 
+#   count() %>% 
+#   filter(n >= 50) %>% 
+#   ungroup() %>% 
+#   group_by(organism, CellType_predict) %>% 
+#   count() %>% 
+#   pivot_wider(values_from = n, names_from = organism) %>% 
+#   filter(!is.na(CellType_predict)) %>% 
+#   replace(is.na(.), values = 0) %>% 
+#   arrange(CellType_predict) %>% 
+#   rename(`CellType (Predict)` = CellType_predict) %>% 
+#   mutate(`Well Supported` = case_when(`Homo sapiens` >= 2 & `Mus musculus` >= 2 ~ 'Yes',
+#                                       TRUE ~ 'No'))
+# 
+# # fix  occasional NA
+# # data made from src/ensdb.R
+# diff_tab_big <- read_tsv('data/diff_tab_big.tsv.gz')
+# down_tab_big <- read_tsv('data/down_tab_big.tsv.gz')
+# gene_tab <- bind_rows(read_tsv('data/hs.ensdb.v86.symbol.geneid.tsv.gz'), read_tsv('data/mm.ensdb.v79.symbol.geneid.tsv.gz'))
+# diff_tab <- diff_tab_big %>% 
+#   filter(Against == 'All', 
+#          Base %in% (meta_filter %>% filter(Organ == 'Eye') %>% 
+#                       pull(CellType) %>% unique()))
+# 
+# 
+# diff_tab_sup <- diff_tab %>% 
+#   group_by(Base, Organism) %>% 
+#   summarise(Count = n()) %>% 
+#   rename(`CellType (Predict)` = Base, `Differentially Expressed Gene Count` = Count) %>% 
+#   pivot_wider(values_from = `Differentially Expressed Gene Count`, names_from = Organism) %>% replace(is.na(.),0) %>% 
+#   as_tibble()
+# 
+# diff_tab_sup <- bind_rows(
+#   diff_tab_sup,
+#   ws_table$`CellType (Predict)`[!ws_table$`CellType (Predict)` %in% 
+#                                   diff_tab_sup$`CellType (Predict)`] %>% 
+#     enframe() %>% 
+#     select(`CellType (Predict)` = value) %>%
+#     mutate(`Homo sapiens` = 0, `Mus musculus` = 0, `Macaca fascicularis` = 0) %>% 
+#     arrange(`CellType (Predict)`)
+# )
+# 
+# write_csv(diff_tab, file = 'supplemental_files/differential_expression_table.csv.gz')
+
+diff_tab_sup %>% 
+  flextable()
+
+ws_table %>% 
+  flextable()
+
+diff_tab_barplot <- diff_tab_sup %>% 
+  pivot_longer(-`CellType (Predict)`, names_to = 'Organism', values_to = 'Diff Gene Count') %>% 
+  ggplot(aes(x=`CellType (Predict)`, y = `Diff Gene Count`, fill = Organism )) + 
+  geom_bar(stat='identity', position = 'dodge') + 
+  cowplot::theme_cowplot() + coord_flip()
+
+#toc()
+
+
+diff_tab_sup_cap %>% flextable()
+```
+
+
+```{r well_supported_celltypes_tab, echo = F, message = F, fig.cap=well_supported_celltypes_tab_cap}
+well_supported_celltypes_tab_cap <- supTab_cap(name='well_supported_celltypes_tab', caption = 'Counts of independent studies for each cell type across the organisms')
+
+ws_table %>% flextable()
+```
 
 
 ```{r decontX, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=decontX_cap}
