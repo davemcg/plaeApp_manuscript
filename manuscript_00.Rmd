@@ -398,7 +398,7 @@ in two or more species, 2. mean log2 fold change greater than two, and 3. mean p
 # tic()
 # ws_oct <- ws_table %>% filter(`Well Supported` == 'Yes') %>% pull(`CellType (Predict)`)
 # 
-consist_diff2 <- scEiaD_2020_v01 %>%
+consist_diff3 <- scEiaD_2020_v01 %>%
   tbl("diff_testing") %>%
   filter(Base %in% ws_oct) %>%
   filter(Group == 'CellType (Predict)',
@@ -406,7 +406,7 @@ consist_diff2 <- scEiaD_2020_v01 %>%
          Organism %in% c('Homo sapiens','Mus musculus')) %>%
   group_by(Base, Gene) %>%
   summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-5), `mean padj` = mean(padj)) %>%
-  filter(`mean log2FC` > 2, `sig count` > 1, `mean padj` < 1e-5) %>%
+  filter(`mean log2FC` > 4, `sig count` > 1, `mean padj` < 1e-5) %>%
   collect() %>%
   mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>%
   left_join(gene_tab, by = 'GENEID') %>%
@@ -419,7 +419,7 @@ consist_diff2 <- scEiaD_2020_v01 %>%
 consist_diff %>% group_by(Base) %>% summarise(Count = n())
 consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 
-consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
+abc <- consist_diff3 %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
 #toc()
 ```
 
