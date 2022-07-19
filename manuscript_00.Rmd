@@ -386,13 +386,14 @@ We used a "pseudo-bulk" based approach where the counts for a category (CellType
 Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltype combinations that are significantly differentially expressed. We define significant as a log2 fold change greater than two as well as a p-value (corrected) less than $1 x 10^-5#. We find a mean of 
 `r diff_tab_sup$"Homo sapiens" %>% mean() %>% round()`, 
 `r diff_tab_sup$"Mus musculus" %>% mean() %>% round()`, and 
-`r diff_tab_sup$"Macaca fascicularis" %>% mean() %>% round()` differentially expressed genes in human, macaque, and mouse respectively (`r supTab_cap(name = 'diff_tab_sup_tab', display = 'cite')`). These variable results directly reflect the differing number of independent studies - mouse and human have substantially more than macaque (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). The full differential table is made available as supplementary file "differential_expression_table.csv.gz." While this differential expression table is large, it can be mined further to give more precise results.
+`r diff_tab_sup$"Macaca fascicularis" %>% mean() %>% round()` differentially expressed genes in human, macaque, and mouse respectively (`r supTab_cap(name = 'diff_tab_sup_tab', display = 'cite')`). These variable results directly reflect the differing number of independent studies - mouse and human have substantially more than macaque (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). The full differential table is made available as supplementary file "differential_expression_table.csv.gz." While this differential expression table is large, it can be further processed to give more precise results.
 
 ## Well supported ocular cell types identify high confidence cell type markers
 
-Cell type marker genes can be proposed on the basis of existing knowledge about their function and/or based on high expression differences when comparing to other cell types. We can further narrow down the list of markers by using the  diversity of studies and organisms in scEiaD to propose a set of community supported cell type markers. We first identify a set of well supported cell types which we define as cell types which have two or more independent studies across both human and mouse (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). These cell types were then assessed to identify differentially expressed genes which met the following criteria across human, mouse, and macaque: 1. padj less than $1 x 10^-4$
-in two or more species, 2. mean log2 fold change greater than two, and 3. mean padj less than $1 x 10^-5$ 
+Cell type marker genes can be proposed on the basis of existing knowledge about their function and on high expression differences when comparing to other cell types. We can further narrow down the list of markers by using the high diversity of studies and organisms in scEiaD to propose a set of community supported cell type markers. We first identify a set of well supported cell types which we define as cell types which have two or more independent studies across both human and mouse (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). These cell types were then assessed to identify differentially expressed genes which met the following criteria across human, mouse, and macaque: 1. padj less than $1 x 10^-4$
+in two or more species, 2. mean log2 fold change greater than 2, and 3. mean padj less than $1 x 10^-5$. A final filter was applied to remove genes as candidates if they were differentially expressed (using the criteria above) in more than three different cell types. This left us with `r top_genes %>% nrow()` gene - cell type markers, a substantial reduction from the `r diff_tab %>% nrow()` we had initially. We provide a table of these genes as supplementary file "consistently_differentially_expressed_genes.csv.gz." 
 
+To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', displah = 'cite')`). We see that human, mouse, and macaque have similar expression pattterning of the proposed markers across the well supported cell types. 
 
 ```{r}
 # tic()
@@ -416,14 +417,16 @@ in two or more species, 2. mean log2 fold change greater than two, and 3. mean p
 
 # # id diff genes only seen once across the cell types
 # uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
-consist_diff %>% group_by(Base) %>% summarise(Count = n())
-consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
+#consist_diff %>% group_by(Base) %>% summarise(Count = n())
+#consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 
-consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
+sup_tab_consist_diff <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
 #toc()
 ```
 
-```{r, fig.height=24, fig.width=12}
+```{r consist_genes_heatmap, fig.height=24, fig.width=12, fig.cap=consist_genes_heatmap_cap}
+consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Rows are genes, columns are cell types and organisms. Rows are split by what cell type the gene is a marker for. Columns are split by the cell types. More red is a higher log2 fold change of the gene - cell type relative to all other cell types and blue is more negative.')
+
 # tic()
 # g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
 # 
@@ -466,9 +469,9 @@ ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row
 #toc()
 ```
 
-## Tease apart closely related cell types
+## Tease apart closely neurogenic and RPC cell types
 
-Neurogenic and RPC have very similar expression patterns. We leverage our more specific differential test to directly assess genes were are different between neurogenic cells and RPC. We show the top 5 genes that are both more highly expressed in RPC relative to neurogenic cell and vice versa.
+As we see in Neurogenic and RPC have very similar expression patterns. We leverage our more specific pairwise differential test to directly assess genes that are different between neurogenic cells and RPC. We show the top 5 genes that are both more highly expressed in RPC relative to neurogenic cell and vice versa.
 
 ```{r, fig.width=15, fig.height=6, echo = F, message = F}
 # tic()

@@ -126,7 +126,7 @@ consist_diff <- scEiaD_2020_v01 %>%
          Organism %in% c('Homo sapiens','Mus musculus')) %>%
   group_by(Base, Gene) %>%
   summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-5), `mean padj` = mean(padj)) %>%
-  filter(`mean log2FC` > 2.463, `sig count` > 1, `mean padj` < 1e-5) %>% # quartile marking
+  filter(`mean log2FC` > 2, `sig count` > 1, `mean padj` < 1e-5) %>% 
   collect() %>%
   mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>%
   left_join(gene_tab, by = 'GENEID') %>%
@@ -135,7 +135,8 @@ consist_diff <- scEiaD_2020_v01 %>%
   arrange(-`mean log2FC`)
 
 # set genes to one cell types (if there are multiple, then pick the one with the highest mean log2FC)
-top_genes <- consist_diff %>% group_by(Symbol) %>% slice_max(., n=1, order_by = `mean log2FC`)
+# remove genes that are diff expressed in more than 3 diff cell types
+top_genes <- consist_diff %>% group_by(Symbol) %>% summarise(Count = n()) %>% filter(Count <= 3) %>% left_join(consist_diff %>%  group_by(Symbol) %>% slice_max(., n=1, order_by = `mean log2FC`), by = 'Symbol')
 # consist_diff %>% group_by(Base) %>% summarise(Count = n())
 # consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 
@@ -182,6 +183,10 @@ consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = valu
 #                                            name = 'log2FC', use_raster = TRUE,
 #                                            row_title_rot = 0)
 # ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(2, 2, 32, 2), "mm"), row_title = "Marker Genes")
+
+# write consist diff file
+consist_diff %>% left_join(consist_diff %>% group_by(Symbol) %>% summarise(Count = n())  %>% left_join(consist_diff %>%  group_by(Symbol) %>% slice_max(., n=1, order_by = `mean log2FC`), by = 'Symbol') %>% select(Symbol,Base, `CT Diff Count` = Count), by = c('Symbol','Base')) %>% mutate(ProposedMarkerGene = case_when(`CT Diff Count` <= 3 ~ 'Yes', TRUE ~ 'No')) %>% arrange(Base, -`mean log2FC`) %>% write_csv('supplemental_files/consistently_differentially_expressed_genes.csv.gz')
+
 toc()
 
 
