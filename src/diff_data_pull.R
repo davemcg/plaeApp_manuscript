@@ -9,10 +9,10 @@ library(glue)
 library(tictoc)
 
 tic()
-#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
-#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD//'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 
 
 library(pool)
@@ -118,23 +118,24 @@ toc()
 tic()
 ws_oct <- ws_table %>% filter(`Well Supported` == 'Yes') %>% pull(`CellType (Predict)`)
 
-consist_diff <- scEiaD_2020_v01 %>% 
-  tbl("diff_testing") %>% 
-  filter(Base %in% ws_oct) %>%  
-  filter(Group == 'CellType (Predict)', 
-         Against == 'All') %>% 
-  group_by(Base, Gene) %>% 
-  summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-4), `mean padj` = mean(padj)) %>% 
-  filter(`mean log2FC` > 2, `sig count` > 1, `mean padj` < 1e-5) %>%  
-  collect() %>% 
-  mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>% 
-  left_join(gene_tab, by = 'GENEID') %>% 
-  relocate(SYMBOL, GENEID) %>% 
-  dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
+consist_diff <- scEiaD_2020_v01 %>%
+  tbl("diff_testing") %>%
+  filter(Base %in% ws_oct) %>%
+  filter(Group == 'CellType (Predict)',
+         Against == 'All',
+         Organism %in% c('Homo sapiens','Mus musculus')) %>%
+  group_by(Base, Gene) %>%
+  summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-5), `mean padj` = mean(padj)) %>%
+  filter(`mean log2FC` > 2.463, `sig count` > 1, `mean padj` < 1e-5) %>% # quartile marking
+  collect() %>%
+  mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>%
+  left_join(gene_tab, by = 'GENEID') %>%
+  relocate(SYMBOL, GENEID) %>%
+  dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>%
   arrange(-`mean log2FC`)
 
-# id diff genes only seen once across the cell types
-uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
+# set genes to one cell types (if there are multiple, then pick the one with the highest mean log2FC)
+top_genes <- consist_diff %>% group_by(Symbol) %>% slice_max(., n=1, order_by = `mean log2FC`)
 # consist_diff %>% group_by(Base) %>% summarise(Count = n())
 # consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 
@@ -143,7 +144,7 @@ toc()
 #######################################
 
 tic()
-g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
+g <- top_genes %>% select(Symbol, Base) %>% left_join(consist_diff, by = c("Symbol", "Base"))  %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
 
 consist_diff_long <- scEiaD_2020_v01 %>%
   tbl("diff_testing") %>%
@@ -170,7 +171,7 @@ consist_diff_organism <- str_extract(consist_diff_celltype, '_\\w+ \\w+') %>% gs
 consist_diff_cts  <- str_extract(consist_diff_celltype, '.*_') %>% gsub('_','',.)
 consist_diff_genes <- row.names(consist_diff_wide) %>% gsub(' \\(.*','',.)
 
-consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = value) %>% left_join(consist_diff %>% select(Symbol, Base) %>% unique()) %>% pull(Base)
+consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = value) %>% left_join(top_genes %>% select(Symbol, Base) %>% unique()) %>% pull(Base)
 
 # 
 # consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, column_labels = consist_diff_organism, 

@@ -398,28 +398,28 @@ in two or more species, 2. mean log2 fold change greater than two, and 3. mean p
 # tic()
 # ws_oct <- ws_table %>% filter(`Well Supported` == 'Yes') %>% pull(`CellType (Predict)`)
 # 
-consist_diff3 <- scEiaD_2020_v01 %>%
-  tbl("diff_testing") %>%
-  filter(Base %in% ws_oct) %>%
-  filter(Group == 'CellType (Predict)',
-         Against == 'All',
-         Organism %in% c('Homo sapiens','Mus musculus')) %>%
-  group_by(Base, Gene) %>%
-  summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-5), `mean padj` = mean(padj)) %>%
-  filter(`mean log2FC` > 4, `sig count` > 1, `mean padj` < 1e-5) %>%
-  collect() %>%
-  mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>%
-  left_join(gene_tab, by = 'GENEID') %>%
-  relocate(SYMBOL, GENEID) %>%
-  dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>%
-  arrange(-`mean log2FC`)
+# consist_diff <- scEiaD_2020_v01 %>%
+#   tbl("diff_testing") %>%
+#   filter(Base %in% ws_oct) %>%
+#   filter(Group == 'CellType (Predict)',
+#          Against == 'All',
+#          Organism %in% c('Homo sapiens','Mus musculus')) %>%
+#   group_by(Base, Gene) %>%
+#   summarise(`mean log2FC` = mean(log2FoldChange), `sig count` = sum(padj < 1e-5), `mean padj` = mean(padj)) %>%
+#   filter(`mean log2FC` > 2.463, `sig count` > 1, `mean padj` < 1e-5) %>%
+#   collect() %>%
+#   mutate(GENEID = str_extract(Gene, 'ENS\\w+')) %>%
+#   left_join(gene_tab, by = 'GENEID') %>%
+#   relocate(SYMBOL, GENEID) %>%
+#   dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>%
+#   arrange(-`mean log2FC`)
 
 # # id diff genes only seen once across the cell types
 # uniq_g <- consist_diff %>% group_by(Symbol) %>% count() %>% filter(n == 1)
 consist_diff %>% group_by(Base) %>% summarise(Count = n())
 consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 
-abc <- consist_diff3 %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
+consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
 #toc()
 ```
 
@@ -676,14 +676,14 @@ diff_tab_barplot <- diff_tab_sup %>%
 #toc()
 
 
-diff_tab_sup %>% flextable()
+diff_tab_sup %>% flextable() %>% autofit() %>% fit_to_width(7)
 ```
 
 
 ```{r well_supported_celltypes_tab, echo = F, message = F, fig.cap=well_supported_celltypes_tab_cap}
 well_supported_celltypes_tab_cap <- supTab_cap(name='well_supported_celltypes_tab', caption = 'Counts of independent studies for each cell type across the organisms')
 
-ws_table %>% flextable()
+ws_table %>% flextable() %>% autofit() %>% fit_to_width(7)
 ```
 
 
@@ -710,5 +710,5 @@ plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
 ```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=studies_table_cap}
 studies_table_cap <- supTab_cap(name = 'studies_table', caption = 'Studies, tissues, and number of cells across scEiaD')
 
-meta_filter %>% group_by(Citation, PMID, organism, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable()
+meta_filter %>% group_by(Citation, PMID, organism, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable() %>% autofit() %>% fit_to_width(7)
 ```
