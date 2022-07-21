@@ -77,7 +77,7 @@ make_exp_plot <- function(input, db, meta_filter){
            `Total Cells` = Count,
            `Mean log2(Counts + 1)` = Expression,
            `% of Cells Detected` = `%`) %>%
-    filter(!is.na(CellType_predict)) %>% 
+    filter(!is.na(!!as.symbol(input$exp_filter_cat))) %>% 
     mutate(`Mean log2(Counts + 1)` = case_when(is.na(`Mean log2(Counts + 1)`) ~ 0, TRUE ~ `Mean log2(Counts + 1)`)) %>% 
     filter(`Total Cells` > as.integer(input$exp_filter_min_cell_number))
   # expand missing genes (nothing detected) to all genes used
@@ -103,9 +103,20 @@ make_exp_plot <- function(input, db, meta_filter){
       scale_radius(range=c(2, 6)) +
       scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
       theme(legend.position="bottom") +
-      facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free', 'Gene')
-  }
-  else {
+      facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free', 'Gene') 
+  } else if (input$figure){
+    box_data  %>% 
+      mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
+      ggplot(aes(x=!!as.symbol(input$exp_plot_facet), y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features), group = CellType_predict, shape = organism)) +
+      geom_boxplot(color = 'black', outlier.shape = NA) +
+      ggbeeswarm::geom_quasirandom(size = 4, groupOnX = TRUE) +
+      cowplot::theme_cowplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      scale_radius(range=c(2, 6)) +
+      scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
+      theme(legend.position="bottom") +
+      facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free', 'Gene') 
+  }  else {
     box_data %>%
       mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
       ggplot(aes(x=Gene, y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features))) +

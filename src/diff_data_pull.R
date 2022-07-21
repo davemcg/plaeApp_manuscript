@@ -145,13 +145,14 @@ toc()
 #######################################
 
 tic()
-g <- top_genes %>% select(Symbol, Base) %>% left_join(consist_diff, by = c("Symbol", "Base"))  %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
+g <- top_genes %>% select(Symbol, Base) %>% filter(!Base %in% c('Early RPC','Late RPC')) %>% left_join(consist_diff, by = c("Symbol", "Base"))  %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
 
 consist_diff_long <- scEiaD_2020_v01 %>%
   tbl("diff_testing") %>%
   filter(Gene %in% g) %>%
   collect() %>%
   filter(Base %in% ws_oct,
+         !Base %in% c('Early RPC','Late RPC'), 
          Group == 'CellType (Predict)',
          Against == 'All') %>%
   select(Gene, Organism, log2FoldChange, Base)
