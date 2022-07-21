@@ -624,7 +624,10 @@ hm_flipflop
 
 ## Pan-study fovea vs peripheral cone test identifies 16 genes consistently differentially expressed
 
-Yan et al. proposed a PRPH2 and RS1 as markers to distinguish fovea and peripheral located cones [@yan_cell_2020]. To see whether we could replicate these findings and propose new markers we perfomed a custom differntial test in human cones that were derived from studies that took retina punches from the fovea or peripheral regions. As this custom test was not 
+While we have provided data in many forms via the web app at plae.nei.nih.gov, there are many more dissections of the data that can be performed. To facilitate custom testing of scEiaD we provide as an example a human fovea versus peripheral cone gene differential testing document as supplementary file "pseudobulk_cone_region.freeze01.html". Yan et al. proposed PRPH2 and RS1 as markers to distinguish fovea and peripheral located cones [@yan_cell_2020]. In our analysis document we use the Seurat object containing the full scEiaD dataset we provide at plae.nei.nih.gov -> Data to build a custom pseudobulk counts matrix containing only cones from human studies that were taken in a region specific manner. This left us with 
+
+
+To see whether we could replicate these findings and whether we can propose new markers we performed a custom differential test in human cones that were derived from studies that took retina punches from the fovea or peripheral regions. As this custom test was not 
 
 Sanes proposed X genes (https://www.nature.com/articles/s41598-020-66092-9 --> Figure 9)
 
