@@ -197,13 +197,25 @@ toc()
 ###############
 
 tic()
+
+pairwise_neurogenic_test_ungrouped <-  scEiaD_2020_v01 %>% 
+  tbl("diff_testing") %>% 
+  filter(Against  == "RPC",   
+         Group == 'CellType (Predict)', 
+         Base == "Neurogenic Cell") %>% 
+  #group_by(Base, Against, Gene) %>% 
+  #summarise(`mean log2FC` = mean(log2FoldChange), `mean padj` = mean(padj), `sig count` = sum(pvalue < 1e-2), `na count` = sum(is.na(log2FoldChange))) %>% 
+  #arrange(-`mean log2FC`) %>%   
+  collect() 
+
+
 pairwise_neurogenic_test<-  scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
   filter(Against  == "RPC",   
          Group == 'CellType (Predict)', 
          Base == "Neurogenic Cell") %>% 
   group_by(Base, Against, Gene) %>% 
-  summarise(`mean log2FC` = mean(log2FoldChange), `mean padj` = mean(padj), `sig count` = sum(pvalue < 1e-2), `na count` = sum(is.na(log2FoldChange))) %>% 
+  summarise(`mean log2FC` = mean(log2FoldChange), `mean padj` = mean(padj), `sig count` = sum(pvalue < 0.05), `na count` = sum(is.na(log2FoldChange)), baseMean = mean(baseMean), lfcSE = mean(lfcSE)) %>% 
   arrange(-`mean log2FC`) %>%   
   collect() %>% 
   filter(!is.na(`mean log2FC`))

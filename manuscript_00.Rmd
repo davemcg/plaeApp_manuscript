@@ -393,7 +393,7 @@ Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltyp
 Cell type marker genes can be proposed on the basis of existing knowledge about their function and on high expression differences when comparing to other cell types. We can further narrow down the list of markers by using the high diversity of studies and organisms in scEiaD to propose a set of community supported cell type markers. We first identify a set of well supported cell types which we define as cell types which have two or more independent studies across both human and mouse (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). These cell types were then assessed to identify differentially expressed genes which met the following criteria across human, mouse, and macaque: 1. padj less than $1 x 10^-4$
 in two or more species, 2. mean log2 fold change greater than 2, and 3. mean padj less than $1 x 10^-5$. A final filter was applied to remove genes as candidates if they were differentially expressed (using the criteria above) in more than three different cell types. This left us with `r top_genes %>% nrow()` gene - cell type markers, a substantial reduction from the `r diff_tab %>% nrow()` we had initially. We provide a table of these genes as supplementary file "consistently_differentially_expressed_genes.csv.gz." 
 
-To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', displah = 'cite')`). We see that human, mouse, and macaque have similar expression pattterning of the proposed markers across the well supported cell types. 
+To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`). We see that human, mouse, and macaque have similar expression pattterning of the proposed markers across the well supported cell types. 
 
 ```{r}
 # tic()
@@ -469,11 +469,16 @@ ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row
 #toc()
 ```
 
-## Tease apart closely neurogenic and RPC cell types
+## Tease apart the closely neurogenic and RPC cell types
 
-As we see in Neurogenic and RPC have very similar expression patterns. We leverage our more specific pairwise differential test to directly assess genes that are different between neurogenic cells and RPC. We show the top 5 genes that are both more highly expressed in RPC relative to neurogenic cell and vice versa.
+We see that the neurogenic cells and RPCs have very similar expression patterns. These cell types are closely related as the neurogenic cells are derived from the multi-potent RPC to later specify neural cell types. First we use the set of genes identified by Lu et al.  [@lu_single-cell_2020] in their study of human retinal differentiation to determine whether our broader scEiaD retains the same trends (`r fig_cap(name = 'neuro', display = 'cite')`A). As expected, we see several confirming patterns. First, we see most of the gene expression changes between RPC and neurogenic are matched between mouse and human. Next we see that the direction of the changes largely matches Lu et al (`r supFig_cap(name='lu_et_al', display = 'cite'`). Third, we see a small number of genes are confirmed as consistently differentially expressed with a padj < 0.1. 
 
-```{r, fig.width=15, fig.height=5, echo = F, message = F}
+To determine whether we can propose any new genes that distinguish RPC and neurogenic states we use our DESeq2 differential expression contrast that directly compares these two cell types. We find `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Homo sapiens') %>% nrow()` human genes and `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Mus musculus') %>% nrow()` mouse genes that have an absolute log2 fold change greater than two and a adjusted p-value below 0.05 (`r supTab_cap(name = 'neuro_table', display = 'cite')`). To identify candidate genes that are differentially expressed at this transitional state between mouse and human we apply similar logic that we used in identifying well supported marker genes across the retina cell types, with a padj less than 0.05 in both human and mouse, a mean log2 fold change greater than two. 
+
+We leverage our more specific pairwise differential test to directly assess genes that are consisntently different between neurogenic cells and RPC in both mouse and human. 
+
+```{r neuro, fig.width=15, fig.height=5, echo = F, message = F, fig.cap=neuro_cap}
+neuro_cap <- fig_cap(name='neuro', caption = 'A. Genes identified in Figure 2K of Lu et al. as being differently expressed during the RPC to neurogenic differentiation in human. We plot the differential expression (log2(fold change) directly between RPC and neurogenic cells. The standard error (calculated by DESeq2) is plotted. Genes with a padj < 0.1 and padj < 0.01 are labelled with "*" and "**", respectively. B. ZBTB38 .....')
 # tic()
 # pairwise_neurogenic_test<-  scEiaD_2020_v01 %>% 
 #   tbl("diff_testing") %>% 
@@ -552,6 +557,7 @@ lu_rep_plot <- lu_long %>%
   geom_errorbar(aes(ymin = log2FoldChange - lfcSE,
                     ymax = log2FoldChange + lfcSE), width = 0.5,
                 position = position_dodge2()) +
+  ylab('Neurogenic / RPC Gene Expression (log2 Fold Change)') +
   coord_flip() + 
   cowplot::theme_cowplot()  + geom_text(aes(y=7), position = position_dodge2()) + facet_wrap(~Organism)
 #g_lu[!g_lu %in% lu_long$Gene]
@@ -728,6 +734,13 @@ diff_tab_sup %>% flextable() %>% autofit() %>% fit_to_width(7)
 well_supported_celltypes_tab_cap <- supTab_cap(name='well_supported_celltypes_tab', caption = 'Counts of independent studies for each cell type across the organisms')
 
 ws_table %>% flextable() %>% autofit() %>% fit_to_width(7)
+```
+
+
+```{r neuro_table, echo = F, message = F, fig.cap=neuro_table_cap}
+neuro_table_cap <- supTab_cap(name='neuro_table', caption = 'Differentially expressed genes between RPC and neurogenic cells in human and mouse. Genes filtered with a abs(log2FoldChange) > 2 and a padj < 0.01.')
+
+pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05) %>% flextable() %>% autofit() %>% fit_to_width(7)
 ```
 
 
