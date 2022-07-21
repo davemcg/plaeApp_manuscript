@@ -42,7 +42,8 @@ make_exp_plot <- function(input, db, meta_filter){
         filter(!!as.symbol(input$exp_filter_cat) >= input$exp_filter_on[1],
                !!as.symbol(input$exp_filter_cat) <= input$exp_filter_on[2])
     }
-    
+    box_data <- box_data %>% 
+      filter(!is.na(!!as.symbol(input$exp_filter_cat))) 
   } else {
     box_data <- db %>% tbl('grouped_stats') %>%
       filter(Gene %in% gene) %>%
@@ -77,7 +78,7 @@ make_exp_plot <- function(input, db, meta_filter){
            `Total Cells` = Count,
            `Mean log2(Counts + 1)` = Expression,
            `% of Cells Detected` = `%`) %>%
-    filter(!is.na(!!as.symbol(input$exp_filter_cat))) %>% 
+    
     mutate(`Mean log2(Counts + 1)` = case_when(is.na(`Mean log2(Counts + 1)`) ~ 0, TRUE ~ `Mean log2(Counts + 1)`)) %>% 
     filter(`Total Cells` > as.integer(input$exp_filter_min_cell_number))
   # expand missing genes (nothing detected) to all genes used

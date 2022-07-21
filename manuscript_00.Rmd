@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 #tic()()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -420,7 +420,7 @@ To visualize these top markers we select up to eight genes (ordered by the mean 
 #consist_diff %>% group_by(Base) %>% summarise(Count = n())
 #consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n())
 
-sup_tab_consist_diff <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
+sup_tab_consist_diff <- top_genes %>% select(Symbol, Base) %>% left_join(consist_diff, by = c('Symbol','Base')) %>% group_by(Base) %>% summarise(Count = n()) %>% ggplot(aes(x=`Base`, y = `Count` )) + geom_bar(stat='identity', position = 'dodge') + cowplot::theme_cowplot() + coord_flip() + xlab("CellType (Predict)")
 #toc()
 ```
 
@@ -471,13 +471,7 @@ ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row
 
 ## Tease apart the closely neurogenic and RPC cell types
 
-We see that the neurogenic cells and RPCs have very similar expression patterns. These cell types are closely related as the neurogenic cells are derived from the multi-potent RPC to later specify neural cell types. First we use the set of genes identified by Lu et al.  [@lu_single-cell_2020] in their study of human retinal differentiation to determine whether our broader scEiaD retains the same trends (`r fig_cap(name = 'neuro', display = 'cite')`A). As expected, we see several confirming patterns. First, we see most of the gene expression changes between RPC and neurogenic are matched between mouse and human. Next we see that the direction of the changes largely matches Lu et al (`r supFig_cap(name='lu_et_al', display = 'cite'`). Third, we see a small number of genes are confirmed as consistently differentially expressed with a padj < 0.1. 
-
-To determine whether we can propose any new genes that distinguish RPC and neurogenic states we use our DESeq2 differential expression contrast that directly compares these two cell types. We find `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Homo sapiens') %>% nrow()` human genes and `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Mus musculus') %>% nrow()` mouse genes that have an absolute log2 fold change greater than two and a adjusted p-value below 0.05 (`r supTab_cap(name = 'neuro_table', display = 'cite')`). To identify candidate genes that are differentially expressed at this transitional state between mouse and human we apply similar logic that we used in identifying well supported marker genes across the retina cell types, with a padj less than 0.05 in both human and mouse, a mean log2 fold change greater than two or less than one. We find one gene that 
-
-We leverage our more specific pairwise differential test to directly assess genes that are consisntently different between neurogenic cells and RPC in both mouse and human. 
-
-```{r neuro, fig.width=15, fig.height=5, echo = F, message = F, fig.cap=neuro_cap}
+```{r neuro, fig.width=25, fig.height=8, echo = F, message = F, fig.cap=neuro_cap}
 neuro_cap <- fig_cap(name='neuro', caption = 'A. Genes identified in Figure 2K of Lu et al. as being differently expressed during the RPC to neurogenic differentiation in human. We plot the differential expression (log2(fold change) directly between RPC and neurogenic cells. The standard error (calculated by DESeq2) is plotted. Genes with a padj < 0.1 and padj < 0.01 are labelled with "*" and "**", respectively. B. ZBTB38 .....')
 # tic()
 # pairwise_neurogenic_test<-  scEiaD_2020_v01 %>% 
@@ -498,14 +492,22 @@ neuro_cap <- fig_cap(name='neuro', caption = 'A. Genes identified in Figure 2K o
 # # dplyr::rename(Symbol = SYMBOL, ID = GENEID) %>% 
 # # arrange(-`mean log2FC`)
 # 
+
+lu_et_al <- c("PTTG1", "SCG3", "SHD", "SOX11", "ONECUT2", "VSX1", "ASCL1", "TCF4", "SOX4", "RORB", "GADD45G", "MYBL1", "MFAP4", "HES6", "NEUROD1", "C8orf46", "OTX2", "OLIG2", "INSM1", "PCBP4", "NEUROD4", "FAM131C", "HES4", "HES5", "HMGA1", "YBX1", "GADD45A", "ATOH7", "DLX2", "DLX1", "SFRP1", "MYB", "NFIB", "SOX9", "ZFP36L1", "FOS", "JUN", "ZFP36L2", "SOX2", "HES1", "EGR1", "JUNB", "NR4A1", "ETV5", "FOXP1", "ID1", "ID2", "ID3", "ID4", "FOXP2")
+
+g_lu <- scEiaD_2020_v01 %>% tbl('genes') %>% collect() %>% filter(grepl(paste(paste0('^',lu_et_al), collapse = ' |'), Gene)) %>% pull(Gene)
+
+
+
 down <- pairwise_neurogenic_test %>% filter(`sig count` > 1) %>% arrange(`mean padj`) %>% filter(`mean log2FC` < 0, `mean padj` < 0.05) %>% mutate(d = `mean log2FC` - lfcSE) %>% arrange(-d) %>% pull(Gene)
 up <-  pairwise_neurogenic_test %>% filter(`sig count` > 1) %>% arrange(`mean padj`) %>% filter(`mean log2FC` > 2, `mean padj` < 0.05) %>% mutate(d = `mean log2FC` - lfcSE) %>% arrange(-d) %>% pull(Gene)
+
 source('src/make_exp_plot.R')
 
 input <- list()
 input$exp_plot_groups <- c('study_accession')
 input$exp_plot_facet <- c('CellType_predict', 'organism')
-input$exp_plot_genes <- down
+input$exp_plot_genes <- c(down, up[!up %in% g_lu])
 input$exp_filter_cat <- 'CellType_predict'
 #input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
 input$exp_filter_on <- c("Neurogenic Cell", "RPC" )
@@ -517,20 +519,17 @@ input$exp_filter_min_cell_number <- 25
 input$flip_facet <- FALSE
 input$figure <- TRUE
 
-exp_plot_down <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) 
+exp_plot_new <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) 
 
-input$exp_plot_genes <- up
-exp_plot_up <- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
-a_legend <- get_legend(exp_plot_down)
-neuro_plot <- plot_grid(plot_grid(exp_plot_down + theme(legend.position="none") + xlab(''),
-          exp_plot_up + theme(legend.position="none") + ylab('') + xlab(''), labels = c('b','c'),
-          
-          rel_widths = c(0.1,1)),
+input$exp_plot_genes <- up[up %in% g_lu]
+exp_plot_existing <- make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+a_legend <- get_legend(exp_plot_new)
+neuro_plot <- plot_grid(plot_grid(exp_plot_existing + theme(legend.position="none") + xlab(''),
+          exp_plot_new + theme(legend.position="none") + ylab('') + xlab(''), 
+          labels = c('b','c'),
+          rel_widths = c(0.6,1)),
           a_legend, ncol = 1, rel_heights = c(1,0.2))
 
-lu_et_al <- c("PTTG1", "SCG3", "SHD", "SOX11", "ONECUT2", "VSX1", "ASCL1", "TCF4", "SOX4", "RORB", "GADD45G", "MYBL1", "MFAP4", "HES6", "NEUROD1", "C8orf46", "OTX2", "OLIG2", "INSM1", "PCBP4", "NEUROD4", "FAM131C", "HES4", "HES5", "HMGA1", "YBX1", "GADD45A", "ATOH7", "DLX2", "DLX1", "SFRP1", "MYB", "NFIB", "SOX9", "ZFP36L1", "FOS", "JUN", "ZFP36L2", "SOX2", "HES1", "EGR1", "JUNB", "NR4A1", "ETV5", "FOXP1", "ID1", "ID2", "ID3", "ID4", "FOXP2")
-
-g_lu <- scEiaD_2020_v01 %>% tbl('genes') %>% collect() %>% filter(grepl(paste(paste0('^',lu_et_al), collapse = ' |'), Gene)) %>% pull(Gene)
 
 lu_long <-  scEiaD_2020_v01 %>% 
   tbl("diff_testing") %>% 
@@ -563,9 +562,12 @@ lu_rep_plot <- lu_long %>%
 #g_lu[!g_lu %in% lu_long$Gene]
 
 
-cowplot::plot_grid(lu_rep_plot, neuro_plot, rel_widths = c(0.7,1), labels = c('a'))
+cowplot::plot_grid(lu_rep_plot, neuro_plot, rel_widths = c(0.6,1), labels = c('a'))
 ```
 
+We see that the neurogenic cells and RPCs have very similar expression patterns. These cell types are closely related as the neurogenic cells are derived from the multi-potent RPC to later specify neural cell types. First we use the set of genes identified by Lu et al.  [@lu_single-cell_2020] in their study of human retinal differentiation to determine whether our broader scEiaD retains the same trends (`r fig_cap(name = 'neuro', display = 'cite')`A). As expected, we see several confirming patterns. First, we see most of the gene expression changes between RPC and neurogenic are matched between mouse and human. Next we see that the direction of the changes largely matches Lu et al (`r supFig_cap(name='lu_et_al', display = 'cite')`). Third, we see a small number of genes are confirmed as consistently differentially expressed with a padj < 0.1. 
+
+To determine whether we can propose any new genes that distinguish RPC and neurogenic states we use our DESeq2 differential expression contrast that directly compares these two cell types. We find `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Homo sapiens') %>% nrow()` human genes and `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Mus musculus') %>% nrow()` mouse genes that have an absolute log2 fold change greater than two and a adjusted p-value below 0.05 (`r supTab_cap(name = 'neuro_table', display = 'cite')`). To identify candidate genes that are consistently differentially expressed at this transitional state in mouse and human we apply similar logic that we used in identifying well supported marker genes across the retina cell types. We filter to genes with a padj less than 0.05 in both human and mouse, a mean log2 fold change greater than two or less than negative one (`r fig_cap(name = 'neuro', display = 'cite')`B and C). We find one gene, ZBTB38, that meets this criteria and drops in expression from RPC to neurogenic. We find `r up %>% length()` genes that increase in expression from RPC to neurogenic, `r up[!up %in% g_lu] %>% length()` of which are not previously identified by Lu et al (`r fig_cap(name = 'neuro', display = 'cite')`C). We replicate `r up[up %in% g_lu] %>% str_extract(., '\\w+') %>% paste(., collapse = ', ')` from Lu et al (`r fig_cap(name = 'neuro', display = 'cite')`B). 
 
 
 ```{r, fig.width=4, fig.height=12, echo = F, message = F}
@@ -620,20 +622,9 @@ hm_flipflop
 #toc()
 ```
 
-```{r}
-library(enrichR)
-dbs <- c('GO_Biological_Process_2018', 'GO_Molecular_Function_2018')
-enriched <- enrichr(org_diff_diff_genes %>% filter(Base == 'Bipolar Cell') %>% pull(Symbol), dbs)
+## Pan-study fovea vs peripheral cone test identifies 16 genes consistently differentially expressed
 
-```
-
-
-
-To aid in in the analysis of ocular gene expression patterns we provide pre-computed differential tests run 
-
-## Pan-study fovea vs peripheral photoreceptor identifies N genes consistently differentially expressed
-
-To identify 
+Yan et al. proposed a PRPH2 and RS1 as markers to distinguish fovea and peripheral located cones [@yan_cell_2020]. To see whether we could replicate these findings and propose new markers we perfomed a custom differntial test in human cones that were derived from studies that took retina punches from the fovea or peripheral regions. As this custom test was not 
 
 Sanes proposed X genes (https://www.nature.com/articles/s41598-020-66092-9 --> Figure 9)
 
@@ -740,7 +731,7 @@ ws_table %>% flextable() %>% autofit() %>% fit_to_width(7)
 ```{r neuro_table, echo = F, message = F, fig.cap=neuro_table_cap}
 neuro_table_cap <- supTab_cap(name='neuro_table', caption = 'Differentially expressed genes between RPC and neurogenic cells in human and mouse. Genes filtered with a abs(log2FoldChange) > 2 and a padj < 0.01.')
 
-pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05) %>% flextable() %>% autofit() %>% fit_to_width(7)
+pairwise_neurogenic_test_ungrouped %>% filter(padj < 0.05) %>% filter(log2FoldChange > 2 | log2FoldChange < 0) %>% flextable() %>% autofit() %>% fit_to_width(7)
 ```
 
 
@@ -756,6 +747,7 @@ input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
 input$exp_plot_col_num <- 16
 input$exp_filter_min_cell_number <- 50
 input$flip_facet <- FALSE
+input$figure <- FALSE
 
 v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
 v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
