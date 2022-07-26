@@ -56,41 +56,46 @@ make_exp_plot <- function(input, db, meta_filter){
   
   
   #cat(input)
-  box_data <- box_data %>%
-    filter(!Platform %in% c('SCRBSeq')) %>%
-    # mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
-    #                                     CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
-    #                                     TRUE ~ CellType_predict)) %>%
-    mutate(Stage = factor(Stage, levels = c('Early Dev.', 'Late Dev.', 'Maturing', 'Mature'))) %>%
-    #filter(!is.na(!!as.symbol(grouping_features))) %>%
-    group_by_at(vars(one_of(c('Gene', input$exp_plot_facet, grouping_features)))) %>%
-    summarise(counts = sum(counts * cell_exp_ct) / sum(cell_exp_ct),
-              cell_exp_ct = sum(cell_exp_ct, na.rm = TRUE)) %>%
-    full_join(., meta_filter_EXP %>%
-                group_by_at(vars(one_of(input$exp_plot_facet, grouping_features))) %>%
-                summarise(Count = n())) %>%
-    mutate(cell_exp_ct = ifelse(is.na(cell_exp_ct), 0, cell_exp_ct)) %>%
-    mutate(`%` = round((cell_exp_ct / Count) * 100, 2),
-           Expression = round(counts * (`%` / 100), 2)) %>%
-    select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
-    arrange(-Expression) %>%
-    rename(`Cell # Detected` = cell_exp_ct,
-           `Total Cells` = Count,
-           `Mean log2(Counts + 1)` = Expression,
-           `% of Cells Detected` = `%`) %>%
-    
-    mutate(`Mean log2(Counts + 1)` = case_when(is.na(`Mean log2(Counts + 1)`) ~ 0, TRUE ~ `Mean log2(Counts + 1)`)) %>% 
-    filter(`Total Cells` > as.integer(input$exp_filter_min_cell_number))
-  # expand missing genes (nothing detected) to all genes used
-  box_data_NA <- box_data %>% filter(is.na(Gene))
-  if (nrow(box_data_NA > 0)){
-    box_data_NA_list <- list()
-    for (i in gene){
-      box_data_NA_list <- box_data_NA %>% mutate(Gene = i)
+  box_data_temp <- list()
+  box_data_NA <- list()
+  for (i in gene){
+    #print(i)
+    box_data_temp[[i]] <- box_data %>%
+      filter(Gene == i) %>% 
+      filter(!Platform %in% c('SCRBSeq')) %>%
+      # mutate(CellType_predict = case_when(CellType_predict == 'RPC' ~ 'RPCs',
+      #                                     CellType_predict == 'Mesenchymal/RPE/Endothelial' ~ 'Endothelial',
+      #                                     TRUE ~ CellType_predict)) %>%
+      mutate(Stage = factor(Stage, levels = c('Early Dev.', 'Late Dev.', 'Maturing', 'Mature'))) %>%
+      #filter(!is.na(!!as.symbol(grouping_features))) %>%
+      group_by_at(vars(one_of(c('Gene', input$exp_plot_facet, grouping_features)))) %>%
+      summarise(counts = sum(counts * cell_exp_ct) / sum(cell_exp_ct),
+                cell_exp_ct = sum(cell_exp_ct, na.rm = TRUE)) %>%
+      full_join(., meta_filter_EXP %>%
+                  group_by_at(vars(one_of(input$exp_plot_facet, grouping_features))) %>%
+                  summarise(Count = n())) %>%
+      mutate(cell_exp_ct = ifelse(is.na(cell_exp_ct), 0, cell_exp_ct)) %>%
+      mutate(`%` = round((cell_exp_ct / Count) * 100, 2),
+             Expression = round(counts * (`%` / 100), 2)) %>%
+      select_at(vars(one_of(c('Gene', grouping_features, 'cell_exp_ct', 'Count', '%', 'Expression')))) %>%
+      arrange(-Expression) %>%
+      rename(`Cell # Detected` = cell_exp_ct,
+             `Total Cells` = Count,
+             `Mean log2(Counts + 1)` = Expression,
+             `% of Cells Detected` = `%`) %>%
+      
+      mutate(`Mean log2(Counts + 1)` = case_when(is.na(`Mean log2(Counts + 1)`) ~ 0, TRUE ~ `Mean log2(Counts + 1)`)) %>% 
+      filter(`Total Cells` > as.integer(input$exp_filter_min_cell_number))
+    # expand missing genes (nothing detected) to all genes used
+    box_data_NA[[i]] <-  box_data_temp[[i]] %>% filter(is.na(Gene))
+    if (nrow(box_data_NA[[i]] > 0)){
+      box_data_temp[[i]] <- bind_rows(box_data_temp[[i]] %>% filter(!is.na(Gene)),
+                                      box_data_NA[[i]] %>% mutate(Gene = i))
     }
-    box_data <- bind_rows(box_data %>% filter(!is.na(Gene)),
-                          box_data_NA_list %>% bind_rows())
   }
+  box_data <- box_data_temp %>% bind_rows()
+  
+  
   box_data$Group <- box_data[,c(2:(length(grouping_features)+1))] %>% tidyr::unite(x, sep = ' ') %>% pull(1)
   
   if (input$flip_facet){
@@ -117,7 +122,21 @@ make_exp_plot <- function(input, db, meta_filter){
       scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
       theme(legend.position="bottom") +
       facet_wrap(ncol = as.numeric(input$exp_plot_col_num), scales = 'free', 'Gene') 
-  }  else {
+  }  else if (input$figure_fovea){
+    box_data  %>% 
+      filter(!is.na(retina_region)) %>% 
+      mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
+      ggplot(aes(x=!!as.symbol(input$exp_plot_facet), y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features), group = CellType_predict)) +
+      geom_boxplot(color = 'black', outlier.shape = NA) +
+      ggbeeswarm::geom_quasirandom(size = 4, groupOnX = TRUE) +
+      cowplot::theme_cowplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      scale_radius(range=c(2, 6)) +
+      scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
+      theme(legend.position="bottom") +
+      facet_wrap(ncol = as.numeric(input$exp_plot_col_num), ~Gene + retina_region) 
+  }
+  else {
     box_data %>%
       mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
       ggplot(aes(x=Gene, y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features))) +

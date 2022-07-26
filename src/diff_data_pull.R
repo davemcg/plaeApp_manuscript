@@ -151,7 +151,7 @@ consist_diff_long <- scEiaD_2020_v01 %>%
   tbl("diff_testing") %>%
   filter(Gene %in% g) %>%
   collect() %>%
-  filter(Base %in% ws_oct,
+  filter(Base %in% top_genes$Base,
          !Base %in% c('Early RPC','Late RPC'), 
          Group == 'CellType (Predict)',
          Against == 'All') %>%
