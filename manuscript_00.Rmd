@@ -340,13 +340,16 @@ plot_grid(a_aa_b, c_d , e ,
 Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources_cap', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingressed a large number of published single cell datasets The UCSC Cell Browser has around sixty thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse; while it only contains around around 10 thousand ocular cells it can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has selected a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the cell and sample level metadata, re-processing of the data from the raw sequence, and, crucially, full availability of the underlying data for outside usage and integrating the independent studies to deliver cross study comparisons. 
 
 
-```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=web_resources_cap}
+```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, results = 'asis', fig.cap=web_resources_cap}
 #tic()()
 i = 16.5 # width of the side borders in the word_document output (in centimeters)
 w = i*0.3937 # width of the side borders in the word_document output (in inches)
 
 
+
 web_resources_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
+
+cat("<div id=\"tbl:web_resources\">")
 
 feature_table <- rbind(
   c('PLAE','Yes','Yes', 'Yes', '1136 ', 'https://plae.nei.nih.gov'),
@@ -360,6 +363,11 @@ colnames(feature_table) <- c('Resource Name', 'Independent\nDatasets', 'Harmoniz
 feature_table %>% flextable() %>%  fontsize(size = 10, part = 'all') %>% autofit() %>% fit_to_width(7)#width(., width = c(1,0.75,0.75,0.75,0.75,3))
 # as of 2021 10 25
 #toc()()
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",web_resources_cap,"*\n"))
+# Output </div>
+cat("</div>")
 ```
 
 ## PLAE differs from a complementary web app, Spectacle in several important ways
@@ -574,58 +582,6 @@ While the well supported markers we propose clearly define most of the cell type
 To determine whether we can propose any new genes that distinguish RPC and neurogenic states we use our DESeq2 differential expression contrast that directly compares these two cell types. We find `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Homo sapiens') %>% nrow()` human genes and `r pairwise_neurogenic_test_ungrouped %>% filter(abs(log2FoldChange) > 2, padj < 0.05, Organism == 'Mus musculus') %>% nrow()` mouse genes that have an absolute log2 fold change greater than two and a adjusted p-value below 0.05 (`r supTab_cap(name = 'neuro_table', display = 'cite')`). To identify candidate genes that are consistently differentially expressed at this transitional state in mouse and human we apply similar logic that we used in identifying well supported marker genes across the retina cell types. We filter to genes with a padj less than 0.05 in both human and mouse, a mean log2 fold change greater than two or less than negative one (`r fig_cap(name = 'neuro', display = 'cite')`B and C). We find one gene, ZBTB38, that meets this criteria and drops in expression when comparing RPC to neurogenic. We find `r up %>% length()` genes that increase in expression from RPC to neurogenic, `r up[!up %in% g_lu] %>% length()` of which are not previously identified by Lu et al (`r fig_cap(name = 'neuro', display = 'cite')`C). We replicate `r up[up %in% g_lu] %>% str_extract(., '\\w+') %>% paste(., collapse = ', ')` from Lu et al (`r fig_cap(name = 'neuro', display = 'cite')`B). 
 
 
-# ```{r, fig.width=8, fig.height=12, echo = F, message = F}
-# # tic()
-# # # flip_flop diff genes
-# # down_tab <- down_tab_big %>% 
-# #   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
-# #   filter(Base %in% ws_oct, 
-# #          Against == 'All')
-# # 
-# # org_diff_diff_genes <- diff_tab_big %>% 
-# #   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
-# #   filter(gene_ct_combo %in% down_tab$gene_ct_combo, 
-# #          Against == 'All') %>% 
-# #   arrange(padj) %>% mutate(x = paste0(Symbol, ' (', ID, ')')) 
-# # 
-# # flip_flop_genes <- scEiaD_2020_v01 %>% tbl('diff_testing_genes') %>% collect() %>% filter(grepl(org_diff_diff_genes %>% pull(ID) %>% paste0(., collapse = '|'), Gene)) %>% pull(Gene)
-# # flip_flop_long <- scEiaD_2020_v01 %>%
-# #   tbl("diff_testing") %>%
-# #   filter(Gene %in% genes) %>%
-# #   collect() %>%
-# #   mutate(Symbol = str_extract(Gene, '^\\w+ ') %>% gsub(' $', '', .)) %>% 
-# #   mutate(gene_ct_combo = paste(Symbol, Base, sep = '_')) %>% 
-# #   filter(gene_ct_combo %in% org_diff_diff_genes$gene_ct_combo,
-# #          Group == 'CellType (Predict)',
-# #          Against == 'All') %>%
-# #   select(Gene, Organism, log2FoldChange, Base)
-# # 
-# # flip_flop_wide <- flip_flop_long %>% pivot_wider(values_from = log2FoldChange, names_from = Organism)
-# # flip_flop_organism <- colnames(flip_flop_wide)[c(3,4,5)]
-# # flip_flop_wide <- flip_flop_wide %>% data.frame()
-# # row.names(flip_flop_wide) <- paste0(flip_flop_wide$Gene,'_', flip_flop_wide$Base)
-# # 
-# # flip_flop_wide <- flip_flop_wide[,-c(1,2)]
-# # 
-# # 
-# # 
-# # flip_flop_genes <- row.names(flip_flop_wide) %>% gsub(' \\(.*','',.)
-# # 
-# # flip_flop_base <- row.names(flip_flop_wide) %>% gsub('.*_','',.) 
-# 
-# gene_anno <- ComplexHeatmap::rowAnnotation(Duplicated = flip_flop_genes %in% (flip_flop_genes[duplicated(flip_flop_genes)]),
-#                                            col = list(Duplicated = c("TRUE" = "green", "FALSE" = "gray")))
-# hm_flipflop <- ComplexHeatmap::Heatmap(flip_flop_wide, column_labels = flip_flop_organism, 
-#                                        row_split = flip_flop_base, show_row_dend = FALSE, 
-#                                        row_labels = flip_flop_genes, 
-#                                        column_title_rot = 90, 
-#                                        right_annotation = gene_anno,
-#                                        name = 'log2FC', use_raster = TRUE,
-#                                        row_title_rot = 0)
-# hm_flipflop
-# #toc()
-# ```
-
 ## Our pan-study macula vs peripheral cone test replicates a published macaque finding and proposes six new markers
 
 ```{r region_fig, fig.width=14, fig.height=3,  echo = F, message = F, fig.cap = region_fig_cap}
@@ -695,9 +651,9 @@ Our differential testing found that while PRPH2, RS1, and GNGT1 had expression d
 
 # Supplementary Figures and Tables
 
-```{r diff_tab_sup_tab, echo = F, message = F,  echo = F, message = F, fig.cap=diff_tab_sup_cap}
+```{r diff_tab_sup_tab, echo = F, message = F,  echo = F, message = F, results = 'asis', fig.cap=diff_tab_sup_cap}
 diff_tab_sup_cap <- supTab_cap(name='diff_tab_sup', caption = 'Counts of signifantly differentially expressed genes for each cell type across the organisms')
-
+cat("<div id=\"tbl:diff_tab_sup\">")
 # tic()
 # # number of celltype (predict) - organism - study counts (with >=50 cells)
 # # ws == Well Supported
@@ -763,20 +719,35 @@ diff_tab_barplot <- diff_tab_sup %>%
 
 
 diff_tab_sup %>% flextable() %>% autofit() %>% fit_to_width(7)
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",diff_tab_sup_cap,"*\n"))
+# Output </div>
+cat("</div>")
 ```
 
 
-```{r well_supported_celltypes_tab, echo = F, message = F, fig.cap=well_supported_celltypes_tab_cap}
+```{r well_supported_celltypes_tab, echo = F, message = F, results = 'asis', fig.cap=well_supported_celltypes_tab_cap}
 well_supported_celltypes_tab_cap <- supTab_cap(name='well_supported_celltypes_tab', caption = 'Counts of independent studies for each cell type across the organisms')
-
+cat("<div id=\"tbl:well_supported_celltypes_tab\">")
 ws_table %>% flextable() %>% autofit() %>% fit_to_width(7)
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",well_supported_celltypes_tab_cap,"*\n"))
+# Output </div>
+cat("</div>")
 ```
 
 
-```{r neuro_table, echo = F, message = F,  echo = F, message = F, fig.cap=neuro_table_cap}
+```{r neuro_table, echo = F, message = F,  echo = F, message = F, results = 'asis',fig.cap=neuro_table_cap}
 neuro_table_cap <- supTab_cap(name='neuro_table', caption = 'Differentially expressed genes between RPC and neurogenic cells in human and mouse. Genes filtered with a abs(log2FoldChange) > 2 and a padj < 0.01.')
-
+cat("<div id=\"tbl:neuro_table\">")
 pairwise_neurogenic_test_ungrouped %>% filter(padj < 0.05) %>% filter(log2FoldChange > 2 | log2FoldChange < 0) %>% flextable() %>% autofit() %>% fit_to_width(7)
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",neuro_table_cap,"*\n"))
+# Output </div>
+cat("</div>")
 ```
 
 
@@ -803,17 +774,27 @@ v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellTyp
 plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
 ```
 
-```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=studies_table_cap}
+```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, results = 'asis',fig.cap=studies_table_cap}
 studies_table_cap <- supTab_cap(name = 'studies_table', caption = 'Studies, tissues, and number of cells across scEiaD')
-
+cat("<div id=\"tbl:studies_table\">")
 meta_filter %>% group_by(Citation, PMID, organism, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable() %>% autofit() %>% fit_to_width(7)
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",studies_table_cap,"*\n"))
+# Output </div>
+cat("</div>")
 ```
 
-```{r region_table,  echo = F, message = F, fig.cap = region_table_cap}
+```{r region_table,  echo = F, message = F, results = 'asis',fig.cap = region_table_cap}
 region_table_cap <- supTab_cap(name = 'region_table', caption = 'Fovea versus peripheral cone differential gene testing table')
-
- region_table %>% filter(padj < 0.1) %>% 
+cat("<div id=\"tbl:region_table\">")
+region_table %>% filter(padj < 0.1) %>% 
   arrange(padj) %>% flextable() %>% autofit() %>% fit_to_width(7)
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",region_table_cap,"*\n"))
+# Output </div>
+cat("</div>")
 ```
 
 
