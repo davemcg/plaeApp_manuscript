@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 #tic()()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -337,7 +337,7 @@ plot_grid(a_aa_b, c_d , e ,
 
 ## scRNA web resources containing ocular data
 
-Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources_cap', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingressed a large number of published single cell datasets The UCSC Cell Browser has around sixty thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse; while it only contains around around 10 thousand ocular cells it can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has selected a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the cell and sample level metadata, re-processing of the data from the raw sequence, and, crucially, full availability of the underlying data for outside usage and integrating the independent studies to deliver cross study comparisons. 
+Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingressed a large number of published single cell datasets The UCSC Cell Browser has around sixty thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse; while it only contains around around 10 thousand ocular cells it can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has selected a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the cell and sample level metadata, re-processing of the data from the raw sequence, and, crucially, full availability of the underlying data for outside usage and integrating the independent studies to deliver cross study comparisons. 
 
 
 ```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, results = 'asis', fig.cap=web_resources_cap}
