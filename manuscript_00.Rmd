@@ -382,9 +382,11 @@ There are two interwoven reasons why the PLAE app is quick, despite the huge amo
 
 PLAE has several ways to visualize the data: one being the 2D UMAP view which, side-by-side, shows gene - cell expression and metadata - cell values. So thus a user can see Crx expression across over a million cells and separately see cell type labels for those same million cells. The 2D UMAP view also has a zoom function, so a user can focus on a subset of cells. Clicking on the plot will show metadata for the five nearest cells to the click, which is useful to seeing what kind of cells are present in a small area (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`a). 
 
-For users interested in seeing how expression of a gene relates to study or other covariates, the "Expression Plot" view displays expression by cell type, predicted cell type, or cluster. The values can then be split and colored by multiple covariates like study or organism. This allows a user to see whether a gene pattern is consistent across studies or species. We also offer a "Dot Plot" view which can display a large number of genes in a space efficient manner. This allows a users to see whether a set of genes has related (or not) expression patterns across multiple cell types (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`b and c). 
+For users interested in seeing how expression of a gene relates to study or other covariates, the Expression Plot view displays expression by cell type, predicted cell type, or cluster. The values can then be split and colored by multiple covariates like study or organism. This allows a user to see whether a gene pattern is consistent across studies or species. We also offer a Dot Plot view which can display a large number of genes in a space efficient manner. This allows a users to see whether a set of genes has related (or not) expression patterns across multiple cell types (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`b and c). 
 
 While scEiaD does not have spatial scRNA seq datasets as of 2022, we do leverage existing knowledge of the structure of the retina to show *in silico* visualization of genes by cell type / layer in a cartoon cross section of the retina. The structure of the cartoon retina was based on the human retina. This unique visualization displays the major cell types of the retina and the RPE / choroid layer behind it. The cell types are colored by the relative amounts of expression in the user selected gene. Like all visualizations in PLAE, the user can use powerful filtering options to only display data from certain metadata characteristics, like species or publication (`r fig_cap(name = 'PLAE_screenshots', display = 'cite')`d).
+
+Finally we have also added a Heatmap visualization which summaries the relative expression differences between user selected cell types or clusters across human, macaque, and mouse. This plot differs from the Dot Plot view as the expression values are relative instead of absolute. That is to say that while the Dot Plot view is proportionate to counts, the Heatmap view is showing the difference in expression between a given cell type (or cluster) and all other cells. This view is potentially useful if a user is especially interested in gene expression patterns across a variety of cell types. 
 
 ```{r PLAE_screenshots, fig.height = 18, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
 PLAE_screenshots_cap <- fig_cap(name='PLAE_screenshots', caption = 'Screenshots from PLAE app. A. UMAP view showing CRX expression with cell type labels, B. Information table showing expression of Crx across celltypes and organism. C. Box plot of selected genes in a user selected cell types across different studies. D. In silico in-situ of Rho. E. Dotplot demonstating efficient display of gene expression across many cell types.')
@@ -636,9 +638,11 @@ plot_grid(plot_grid(a,b,c,d + theme(legend.position="none"),e,f,g, nrow = 1),
 
 ```
 
+
+
 While we have provided data in many forms via the web app at plae.nei.nih.gov, there are many more dissections of the data that can be performed. To facilitate custom testing with the scEiaD database we provide, as an example, a human-specific macula versus peripheral cone differential testing analysis document as supplementary file "pseudobulk_cone_region.freeze01.html". In our analysis document we use the Seurat object containing the full scEiaD dataset we provide at plae.nei.nih.gov to build a custom pseudobulk counts matrix containing only cones from human studies that were taken in a region specific manner. This left us with 26678 cells across six studies. Yan et al. previously proposed PRPH2 and RS1 as markers to distinguish macula and peripheral located human cones[@yanCellAtlasHuman2020a] and Peng et al. proposed CALB1 and GNGT1 as cone region markers in macaque [@pengMolecularClassificationComparative2019a]. 
 
-Our differential testing found that while PRPH2, RS1, and GNGT1 had expression differences matching that the findings Yan et al. and Peng et al. published, they failed to replicate in our test with pvalue and padj being above 0.1 for all three. In contrast CALB1 did replicate strongly with the sixth lowest padj (0.00721) across our entire test and a log2 fold change of 2.87. We find six more genes with a padj < 0.01: PDE6G, AKAP12, HSPB1, GADD45B, CC2D2A, and RP1L1 (`r fig_cap(name = 'region_fig', display = 'cite')`). None of these candidate cone region marker genes display regionally different expression in rods (`r supFig_cap(name = 'rod_region_fig', display = 'cite')`).
+Our differential testing found that while PRPH2, RS1, and GNGT1 had expression differences matching that the findings Yan et al. and Peng et al. published, they failed to replicate in our test with pvalue and padj being above 0.1 for all three. In contrast CALB1 did replicate strongly with the sixth lowest padj (0.00721) across our entire test and a log2 fold change of 2.87. We find six more genes with a padj < 0.01: PDE6G, AKAP12, HSPB1, GADD45B, CC2D2A, and RP1L1 (`r fig_cap(name = 'region_fig', display = 'cite')`and `r supTab_cap(name = 'region_table', display = 'cite')`). None of these candidate cone region marker genes display regionally different expression in rods (`r supFig_cap(name = 'rod_region_fig', display = 'cite')`).
 
 # Conclusions
 
@@ -651,9 +655,92 @@ Our differential testing found that while PRPH2, RS1, and GNGT1 had expression d
 
 # Supplementary Figures and Tables
 
-```{r diff_tab_sup_tab, echo = F, message = F,  echo = F, message = F, results = 'asis', fig.cap=diff_tab_sup_cap}
-diff_tab_sup_cap <- supTab_cap(name='diff_tab_sup', caption = 'Counts of signifantly differentially expressed genes for each cell type across the organisms')
-cat("<div id=\"tbl:diff_tab_sup\">")
+
+```{r decontX, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=decontX_cap}
+decontX_cap <- supFig_cap(name='decontX', caption = 'DecontX *in silico* ambient RNA contamination tool substantially removes Rhodopsin expression in non-rod cells while retaining high expression rods. First shown (a) is Rhodopsin expression across the scEiaD v0 dataset, without DecontX optimization. Note Rhodopsin expression is noticeable in many cell types beyond the rods. Next (b) is the scEiaD v1 dataset with DecontX optimization. Rhodopsin is nearly exclusively expressed in labelled rod cells. Despite the computational ambient RNA removal, Rhodopsin expression remains high in the Rods.')
+source('src/make_exp_plot.R')
+
+input <- list()
+input$exp_plot_groups <- c('organism')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- c('RHO (ENSG00000163914)')
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+input$flip_facet <- FALSE
+input$figure <- FALSE
+input$figure_fovea <- FALSE
+
+
+v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
+v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+input$exp_filter_min_cell_number <- 1000
+v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellType_predict %in% unique(meta_filter_v0$CellType_predict)))
+plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
+```
+
+
+
+```{r cone_region_rep, fig.width=8, fig.height=10,  echo = F, message = F, fig.cap = cone_region_rep_cap}
+cone_region_rep_cap <- supFig_cap(name = 'cone_region_rep', caption = 'Genes identified by Peng et al. and Yan et al. as macula / peripheral differentially expressed in cones.')
+cowplot::plot_grid(prph2, rs1,gngt1, ncol = 1)
+```
+
+
+```{r rod_region_fig, fig.width=20, fig.height=10,  echo = F, message = F, fig.cap = rod_region_fig_cap}
+rod_region_fig_cap <- supFig_cap(name = 'rod_region_fig', caption = 'Human cone fovea - peripheral differentially expressed genes are not differentially expressed in human rods.')
+
+# 
+# rods
+input <- list()
+input$exp_plot_groups <- c('study_accession')
+input$exp_plot_facet <- c('CellType_predict', 'organism', 'retina_region')
+input$exp_plot_genes <- c('PRPH2 (ENSG00000112619)')
+input$exp_filter_cat <- c('CellType_predict', 'organism')
+#input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
+input$exp_filter_on <- c("Rod", "Homo sapiens" )
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+#input$exp_plot_ylab <- '% of Cells Detected'
+#input$exp_plot_groups <- c('organism')
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 10
+input$flip_facet <- FALSE
+input$figure <- FALSE
+input$figure_fovea <- TRUE
+input$exp_plot_genes <- diff_region_cone_genes[1]; a <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') +  theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+input$exp_plot_genes <- diff_region_cone_genes[2]; b <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+input$exp_plot_genes <- diff_region_cone_genes[3]; c <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+input$exp_plot_genes <- diff_region_cone_genes[4]; d <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + ylab('') + xlab('') + theme(axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+input$exp_plot_genes <- diff_region_cone_genes[5]; e <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+input$exp_plot_genes <- diff_region_cone_genes[6]; f <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+input$exp_plot_genes <- diff_region_cone_genes[7]; g <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
+
+region_legend <- get_legend(d)
+
+plot_grid(plot_grid(a,b,c,d + theme(legend.position="none"),e,f,g, nrow = 1),
+          region_legend, 
+          rel_heights = c(1,0.2), 
+          nrow = 2)
+```
+
+```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, results = 'asis',fig.cap=studies_table_cap}
+# 1
+
+studies_table_cap <- supTab_cap(name = 'studies_table', caption = 'Studies, tissues, and number of cells across scEiaD')
+cat("<div id=\"tbl:studies_table\">")
+meta_filter %>% group_by(Citation, PMID, organism, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable() %>% autofit() %>% fit_to_width(7)
+
+#Output Caption (* * for italics)
+cat(paste0("\n*",studies_table_cap,"*\n"))
+# Output </div>
+cat("</div>")
+```
+
+
+```{r diff_tab_sup_tab, echo = F, message = F,  echo = F, message = F, results = 'asis', fig.cap=diff_tab_sup_tab_cap}
+# 2
+diff_tab_sup_tab_cap <- supTab_cap(name='diff_tab_sup_tab', caption = 'Counts of significantly differentially expressed genes for each cell type across the organisms')
+cat("<div id=\"tbl:diff_tab_sup_tab\">")
 # tic()
 # # number of celltype (predict) - organism - study counts (with >=50 cells)
 # # ws == Well Supported
@@ -721,13 +808,14 @@ diff_tab_barplot <- diff_tab_sup %>%
 diff_tab_sup %>% flextable() %>% autofit() %>% fit_to_width(7)
 
 #Output Caption (* * for italics)
-cat(paste0("\n*",diff_tab_sup_cap,"*\n"))
+cat(paste0("\n*",diff_tab_sup_tab_cap,"*\n"))
 # Output </div>
 cat("</div>")
 ```
 
 
 ```{r well_supported_celltypes_tab, echo = F, message = F, results = 'asis', fig.cap=well_supported_celltypes_tab_cap}
+# 2
 well_supported_celltypes_tab_cap <- supTab_cap(name='well_supported_celltypes_tab', caption = 'Counts of independent studies for each cell type across the organisms')
 cat("<div id=\"tbl:well_supported_celltypes_tab\">")
 ws_table %>% flextable() %>% autofit() %>% fit_to_width(7)
@@ -740,6 +828,7 @@ cat("</div>")
 
 
 ```{r neuro_table, echo = F, message = F,  echo = F, message = F, results = 'asis',fig.cap=neuro_table_cap}
+# 4
 neuro_table_cap <- supTab_cap(name='neuro_table', caption = 'Differentially expressed genes between RPC and neurogenic cells in human and mouse. Genes filtered with a abs(log2FoldChange) > 2 and a padj < 0.01.')
 cat("<div id=\"tbl:neuro_table\">")
 pairwise_neurogenic_test_ungrouped %>% filter(padj < 0.05) %>% filter(log2FoldChange > 2 | log2FoldChange < 0) %>% flextable() %>% autofit() %>% fit_to_width(7)
@@ -751,41 +840,10 @@ cat("</div>")
 ```
 
 
-```{r decontX, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=decontX_cap}
-decontX_cap <- supFig_cap(name='decontX', caption = 'DecontX *in silico* ambient RNA contamination tool substantially removes Rhodopsin expression in non-rod cells while retaining high expression rods. First shown (a) is Rhodopsin expression across the scEiaD v0 dataset, without DecontX optimization. Note Rhodopsin expression is noticeable in many cell types beyond the rods. Next (b) is the scEiaD v1 dataset with DecontX optimization. Rhodopsin is nearly exclusively expressed in labelled rod cells. Despite the computational ambient RNA removal, Rhodopsin expression remains high in the Rods.')
-source('src/make_exp_plot.R')
 
-input <- list()
-input$exp_plot_groups <- c('organism')
-input$exp_plot_facet <- c('CellType_predict')
-input$exp_plot_genes <- c('RHO (ENSG00000163914)')
-input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
-input$exp_plot_col_num <- 16
-input$exp_filter_min_cell_number <- 50
-input$flip_facet <- FALSE
-input$figure <- FALSE
-input$figure_fovea <- FALSE
-
-
-v0_rho <- make_exp_plot(input, scEiaD_2020_v00, meta_filter_v0)
-v1_rho <-  make_exp_plot(input, scEiaD_2020_v01, meta_filter)
-input$exp_filter_min_cell_number <- 1000
-v1.1_rho <- make_exp_plot(input, scEiaD_2020_v01, meta_filter %>% filter(CellType_predict %in% unique(meta_filter_v0$CellType_predict)))
-plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
-```
-
-```{r studies_table, fig.height = 15, fig.width = 20, echo = F, message = F, results = 'asis',fig.cap=studies_table_cap}
-studies_table_cap <- supTab_cap(name = 'studies_table', caption = 'Studies, tissues, and number of cells across scEiaD')
-cat("<div id=\"tbl:studies_table\">")
-meta_filter %>% group_by(Citation, PMID, organism, study_accession) %>% summarise(Count = n(), Tissues = paste(unique(Tissue), collapse = ', ')) %>% flextable() %>% autofit() %>% fit_to_width(7)
-
-#Output Caption (* * for italics)
-cat(paste0("\n*",studies_table_cap,"*\n"))
-# Output </div>
-cat("</div>")
-```
 
 ```{r region_table,  echo = F, message = F, results = 'asis',fig.cap = region_table_cap}
+# 5
 region_table_cap <- supTab_cap(name = 'region_table', caption = 'Fovea versus peripheral cone differential gene testing table')
 cat("<div id=\"tbl:region_table\">")
 region_table %>% filter(padj < 0.1) %>% 
@@ -798,46 +856,8 @@ cat("</div>")
 ```
 
 
-```{r cone_region_rep, fig.width=8, fig.height=10,  echo = F, message = F, fig.cap = cone_region_rep_cap}
-cone_region_rep_cap <- supFig_cap(name = 'rod_region_fig', caption = 'Genes identified by Peng et al. and Yan et al. as macula / peripheral differentially expressed in cones.')
-cowplot::plot_grid(prph2, rs1,gngt1, ncol = 1)
-```
 
-```{r rod_region_fig, fig.width=20, fig.height=10,  echo = F, message = F, fig.cap = rod_region_fig_cap}
-rod_region_fig_cap <- supFig_cap(name = 'rod_region_fig', caption = 'Human cone fovea - peripheral differentially expressed genes are not differentially expressed in human rods.')
 
-# 
-# rods
-input <- list()
-input$exp_plot_groups <- c('study_accession')
-input$exp_plot_facet <- c('CellType_predict', 'organism', 'retina_region')
-input$exp_plot_genes <- c('PRPH2 (ENSG00000112619)')
-input$exp_filter_cat <- c('CellType_predict', 'organism')
-#input$exp_filter_on <- c('AC/HC Precursor', 'Amacrine Cell', 'Astrocyte', 'Bipolar Cell', 'Cone', 'Early RPC',' Horizontal Cell','Late RPC','Microglia','Muller Glia', 'Neurogenic Cell', 'Photoreceptor Precursor','Retinal Ganglion Cell','Rod','Rod Bipolar Cell','RPC','RPE' )
-input$exp_filter_on <- c("Rod", "Homo sapiens" )
-input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
-#input$exp_plot_ylab <- '% of Cells Detected'
-#input$exp_plot_groups <- c('organism')
-input$exp_plot_col_num <- 16
-input$exp_filter_min_cell_number <- 10
-input$flip_facet <- FALSE
-input$figure <- FALSE
-input$figure_fovea <- TRUE
-input$exp_plot_genes <- diff_region_cone_genes[1]; a <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') +  theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-input$exp_plot_genes <- diff_region_cone_genes[2]; b <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-input$exp_plot_genes <- diff_region_cone_genes[3]; c <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-input$exp_plot_genes <- diff_region_cone_genes[4]; d <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + ylab('') + xlab('') + theme(axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-input$exp_plot_genes <- diff_region_cone_genes[5]; e <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-input$exp_plot_genes <- diff_region_cone_genes[6]; f <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-input$exp_plot_genes <- diff_region_cone_genes[7]; g <- make_exp_plot(input, scEiaD_2020_v01, meta_filter) + xlab('') + ylab('') + theme(legend.position="none",axis.ticks.x=element_blank(), axis.text.x=element_blank() ) 
-
-region_legend <- get_legend(d)
-
-plot_grid(plot_grid(a,b,c,d + theme(legend.position="none"),e,f,g, nrow = 1),
-          region_legend, 
-          rel_heights = c(1,0.2), 
-          nrow = 2)
-```
 
 
 
