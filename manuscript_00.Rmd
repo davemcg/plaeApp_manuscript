@@ -438,7 +438,7 @@ sup_tab_consist_diff <- top_genes %>% select(Symbol, Base) %>% left_join(consist
 #toc()
 ```
 
-```{r consist_genes_heatmap, fig.height=20, fig.width=10, echo = F, message = F,  fig.cap=consist_genes_heatmap_cap}
+```{r consist_genes_heatmap, fig.height=22, fig.width=10, echo = F, message = F,  fig.cap=consist_genes_heatmap_cap}
 consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Rows are genes, columns are cell types and organisms. Rows are split by what cell type the gene is a marker for. Columns are split by the cell types. More red is a higher log2 fold change of the gene - cell type relative to all other cell types and blue is more negative.')
 
 # tic()
@@ -586,7 +586,7 @@ To determine whether we can propose any new genes that distinguish RPC and neuro
 
 ## Our pan-study macula vs peripheral cone test replicates a published macaque finding and proposes six new markers
 
-```{r region_fig, fig.width=14, fig.height=3,  echo = F, message = F, fig.cap = region_fig_cap}
+```{r region_fig, fig.width=18, fig.height=3,  echo = F, message = F, fig.cap = region_fig_cap}
 region_fig_cap <- fig_cap(name='regino_fig', caption = 'Plot of markers distinguishing human macula or peripheral punch derived cones.')
 
 source('src/make_exp_plot.R')
