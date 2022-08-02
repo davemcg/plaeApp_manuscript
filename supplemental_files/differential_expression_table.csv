@@ -1,0 +1,43 @@
+CellType (Predict),Homo sapiens,Mus musculus,Macaca fascicularis
+AC/HC Precursor,134,106,0
+Amacrine Cell,1238,1169,27
+Astrocyte,134,0,0
+B-Cell,718,48,0
+Beam,43,2,72
+Bipolar Cell,1101,932,18
+Blood Vessel,479,35,0
+Ciliary Body,16,0,0
+Ciliary Margin,62,0,0
+Ciliary Muscle,48,94,95
+Cone,949,661,75
+Conjunctival Epithelial,197,27,0
+Corneal Epithelial,285,15,0
+Corneal Nerve,51,0,0
+Corneal Progenitor,28,9,0
+Early RPC,123,260,0
+Endothelial,1028,1215,393
+Epithelial,204,49,0
+Fibroblast,867,209,0
+Horizontal Cell,685,726,23
+JCT,5,0,83
+Keratocyte,3,0,0
+Late RPC,145,315,0
+Limbal,115,0,0
+Macrophage,1109,596,166
+Melanocyte,453,97,63
+Microglia,1081,758,234
+Monocyte,1026,38,0
+Muller Glia,1060,927,95
+Neurogenic Cell,71,340,0
+Pericyte,565,752,337
+Photoreceptor Precursor,43,75,0
+Proliferating Cornea,4,0,0
+Red Blood Cell,280,260,0
+Retinal Ganglion Cell,1244,1285,56
+Rod,995,612,64
+Rod Bipolar Cell,414,154,0
+RPC,151,463,0
+RPE,628,10,0
+Schwann,629,36,85
+Smooth Muscle Cell,340,40,0
+T/NK-Cell,837,43,95
