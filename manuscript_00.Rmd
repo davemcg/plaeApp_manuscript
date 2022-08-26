@@ -149,12 +149,142 @@ Our first version of the single cell Eye is a Disk (scEiaD) database contained `
 
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we prominently feature each of these studies along with a direct link to their citation, where possible, on the loading page of plae.nei.nih.gov.
 
-```{r scEiaD_data_overview, fig.height = 16, fig.width = 20, echo = F, message = F, fig.cap=scEiaD_data_overview_cap}
+```{r, fig.height=14, fig.width=12, fig.cap = scEiaD_data_overview_cap}
+num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
+num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
+num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
+
+scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. Number of cells for each ocular cell type. B. Number of studies for each ocular cell type (over 10 cells), colored by species. C. Tabulation of the number of studies present across {num1} ocular and {num2} non-ocular tissues, D. Web app performance (lower is better, missing functionality is shown as blank) for important functions compared between PLAE, Spectacle, and Tabula Sapiens (see methods)."))
+
+study_count_by_tissue <- meta_filter %>%
+  mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
+                           TRUE ~ 'Body'),
+         Tissue = gsub('\\.|_', ' ', Tissue),
+         Tissue = gsub("RPE$","RPE-Choroid", Tissue),
+         Tissue = gsub(" and Aorta","", Tissue)) %>% 
+  #filter(Organ == 'Eye') %>% 
+  select(Organ, Tissue,organism, study_accession) %>%
+  unique() %>%
+  group_by(Organ, Tissue, organism) %>% 
+  summarise(Count = n()) %>%
+  ungroup() %>% 
+  ggplot(aes(x=Tissue,y=Count, fill = organism, label = Count, group = organism)) +
+  ylab('Number of Studies') +
+  geom_bar(stat='identity', position='stack') +
+  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5)) +
+  cowplot::theme_cowplot() +
+  coord_flip() +
+  theme(legend.position = "none") +
+  scale_y_continuous(expand = c(0, 0))  + xlab('') +
+  ggforce::facet_col(~Organ, scales = 'free_y', space = 'free')
+
+# retina cell types
+retina_ct <- meta_filter %>% filter(Organ == 'Eye') %>% 
+  pull(CellType) %>% unique()
+
+cell_counts <- meta_filter %>% filter(Organ == 'Eye', CellType_predict %in% retina_ct) %>% 
+  mutate(CellType_predict = case_when(is.na(CellType_predict) ~ 'Unlabelled', TRUE ~ CellType_predict)) %>% 
+  group_by(CellType_predict, organism) %>%
+  summarise(Count = n()) %>% 
+  mutate(sCount = log2(Count)) %>% 
+  ggplot(aes(x=CellType_predict,y=sCount, label = Count, fill = organism, group = organism)) +
+  ylab('log2(Number of Cells)') +
+  geom_bar(stat='identity', position='stack') +
+  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5)) + 
+  cowplot::theme_cowplot() +
+  coord_flip() + 
+  scale_y_continuous(expand = c(0, 0)) + xlab('')
+
+study_counts_by_cell <- meta_filter %>% filter(Organ == 'Eye', CellType_predict %in% retina_ct) %>% 
+  mutate(CellType_predict = case_when(is.na(CellType_predict) ~ 'Unlabelled', TRUE ~ CellType_predict)) %>% 
+  group_by(organism, CellType_predict, study_accession) %>%
+  summarise(Count = n()) %>% 
+  filter(Count > 10) %>% 
+  summarise(Count = n()) %>% 
+  mutate(Count = case_when(CellType_predict != 'Unlabelled' ~ Count)) %>% 
+  mutate(sCount = log2(Count)) %>% 
+  ggplot(aes(x=CellType_predict,y=Count, label = Count, fill = organism, group = organism)) +
+  ylab('Number of Studies') +
+  geom_bar(stat='identity', position='stack') +
+  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5)) + 
+  cowplot::theme_cowplot() +
+  coord_flip() + 
+  scale_y_continuous(expand = c(0, 0)) + xlab('')
+
+timings <- rbind(
+  c(1,7,1),
+  c(9,13,8),
+  c(3,NA,2),
+  c(2,NA,NA),
+  c(2,1,NA),
+  c(2,NA,NA),
+  c(2,1,NA),
+  c(4,41,NA)
+) %>% data.frame()
+
+row.names(timings) <- c('Initial Page',
+                        'Cell Type Colored UMAP',
+                        'Abca4 Expression UMAP',
+                        'Boxplot of Abca4 Expression By CellType Across All Studies',
+                        'Boxplot of Abca4 Expression By CellType Across One Study',
+                        'Dotplot of Abca4, Pax6, Nrl, and Atoh7',
+                        'Heatmap of Abca4, Pax6, Nrl, and Atoh7',
+                        'Table of Differentially Expressed Genes between Bipolar and Cone Cells'
+                        
+) %>% str_wrap(., width = 32)
+
+colnames(timings) <- c('PLAE',"Spectacle",'Tabula Sapiens\n(CELLxGENE)')
+
+breaks_fun <- function(x) {
+  if (max(x) > 30) {
+    seq(0,40,20)
+  } else if (max(x) > 9) {
+    seq(0, round(max(x)), 5)
+  } else if (max(x) >= 6) {
+    seq(0, round(max(x)), 2)
+  } else if (max(x) >= 3) {
+    seq(0, round(max(x)), 1)
+  } else {
+    seq(0,2,1)
+  }
+}
+
+timing_plot <- timings %>% as_tibble(rownames = 'Test') %>% 
+  pivot_longer(-Test) %>% 
+  mutate(Test = factor(Test, levels = row.names(timings))) %>% 
+  ggplot(aes(x=name,y=value)) + 
+  geom_bar(stat= 'identity') + 
+  facet_wrap(~Test, scales = 'free_y', ncol = 2) + 
+  xlab('Resource') + 
+  ylab('Seconds to Load') + 
+  cowplot::theme_cowplot() +
+  scale_y_continuous(breaks = breaks_fun)
+
+
+
+
+
+ab <- cowplot::plot_grid(cell_counts + theme(legend.position = "none"), 
+                         study_counts_by_cell, 
+                         nrow = 1, 
+                         rel_widths = c(1,1), labels = c('a','b'))
+
+cd <- cowplot::plot_grid(study_count_by_tissue, 
+                         timing_plot, 
+                         nrow = 1, 
+                         rel_widths = c(0.7,1),
+                         labels = c('c','d'))
+
+cowplot::plot_grid(ab, cd, ncol = 1, rel_heights = c(1,0.8))
+
+```
+
+```{r sup_scEiaD_data_overview, fig.height = 16, fig.width = 20, echo = F, message = F, fig.cap=sup_scEiaD_data_overview_cap}
 
 num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
-scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types. D. Proportion of cell types (predicted) across each study (split by species and tissue)."))
+sup_scEiaD_data_overview_cap <- supFig_cap(name = '_supscEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types. D. Proportion of cell types (predicted) across each study (split by species and tissue)."))
 
 # organ
 meta_filter <- meta_filter %>% mutate(organism = factor(organism, levels = meta_filter$organism %>% unique()))
