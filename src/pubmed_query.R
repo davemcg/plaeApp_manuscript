@@ -84,11 +84,12 @@ for (i in pm_query3){
 #   pmid2[[i]] <- pubmed_counter(i)
 # }
 
-save(pmid0, pmid1, pmid2, file = 'data/top_marker_pmid.Rdata')
+
 queries <- queries %>% left_join(., pmid0 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query0=value), by = c("Symbol" = "name")) 
 queries <- queries %>% left_join(., pmid1 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query1=value), by = c("pm_query1" = "name")) 
 queries <- queries %>% left_join(., pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query2=value), by = c("pm_query2" = "name"))
+save(pmid0, pmid1, pmid2, pmid3, queries, file = 'data/top_marker_pmid.Rdata')
 
-save(top_markers, marker_info, exp_stats, file = '~/data/scEiaD/top_markers.Rdata')
+save(queries, file = 'data/top_markers.Rdata')
 #pmid %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe()
 #pmid %>% map(function(x) paste %>% unlist() %>% enframe()
