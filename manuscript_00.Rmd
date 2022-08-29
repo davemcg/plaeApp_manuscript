@@ -91,6 +91,10 @@ scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPL
 dropped <- meta_filter$CellType[!meta_filter$CellType %in% meta_filter$CellType_predict]
 
 #toc()
+
+num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
+num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
+num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
 ```
 
 
@@ -135,7 +139,7 @@ The aggregateAcrossCells function from the scuttle R package was used to aggrega
 
 ## scEiaD structure and web app optimization
 
-The web app at plae.nei.nih.gov can display gene expression across over a million cells in only a few seconds. This speed is only possible due to custom data structures that were optimized for data query efficiency. Like eyeIntegration's EiaD database [@swamyEyeDiskEyeIntegration2019a], scEiaD is a sqlite database with tables for the core categories. This allows the app to initialize in about 30 seconds on a cloud server with memory usage under 8 GB. For the gene by cell expression matrix, the data was transformed into a "long" format where there are three columns: gene, cell barcode, and gene count value. This allows for cell - gene level queries to be completed, again with minimal memory usage, in under 0.5 seconds. To generate the aggregated information (in the Dot Plot, Expression Plot, and tables) we pre-calculated all queries by running a dplyr "group by" operation on all column fields. On user given query, the data is further aggregated to the user request. This allows for complicated queries to complete in seconds rather than minutes. To compare loading times for useful tasks we queried https://plae.nei.nih.gov, http://singlecell-eye.org, and http://tabula-sapiens-portal.ds.czbiohub.org, on 2022-08-24. For Spectacle, we used the "Single-Cell RNA-Seq Analysis of Retinal Development..." 10X dataset from Clark et al. for all timings. Timings are accurate to the second. If the functionality tested was not available for a certain web app, it was represented by a blank timing. 
+The web app at plae.nei.nih.gov can display gene expression across over a million cells in only a few seconds. This speed is only possible due to custom data structures that were optimized for data query efficiency. Like eyeIntegration's EiaD database [@swamyEyeDiskEyeIntegration2019a], scEiaD is a sqlite database with tables for the core categories. This allows the app to initialize in about 30 seconds on a cloud server with memory usage under 8 GB. For the gene by cell expression matrix, the data was transformed into a "long" format where there are three columns: gene, cell barcode, and gene count value. This allows for cell - gene level queries to be completed, again with minimal memory usage, in under 0.5 seconds. To generate the aggregated information (in the Dot Plot, Expression Plot, and tables) we pre-calculated all queries by running a dplyr "group by" operation on all column fields. On user given query, the data is further aggregated to the user request. This allows for complicated queries to complete in seconds rather than minutes. To compare web app loading times for useful tasks we queried https://plae.nei.nih.gov, http://singlecell-eye.org, and http://tabula-sapiens-portal.ds.czbiohub.org, on 2022-08-24. For Spectacle, we used the "Single-Cell RNA-Seq Analysis of Retinal Development..." 10X dataset from Clark et al. for all timings. Timings are accurate to the second. If the functionality tested was not available for a certain web app, it was represented by a blank space. 
 
 ## Data reproducibility
 
@@ -150,11 +154,9 @@ Our first version of the single cell Eye is a Disk (scEiaD) database contained `
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')`). The scEiaD database contains `r num2` non-ocular human and mouse tissues and `r num1` ocular tissues across human, chicken, macaque, and mouse (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we prominently feature each of these studies along with a direct link to their citation, where possible, on the loading page of plae.nei.nih.gov.
 
 ```{r, fig.height=14, fig.width=12, fig.cap = scEiaD_data_overview_cap}
-num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
-num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
-num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
 
-scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. Number of cells for each ocular cell type. B. Number of studies for each ocular cell type (over 10 cells), colored by species. C. Tabulation of the number of studies present across {num1} ocular and {num2} non-ocular tissues, D. Web app performance (lower is better, missing functionality is shown as blank) for important functions compared between PLAE, Spectacle, and Tabula Sapiens (see methods)."))
+
+scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. Number of cells for each ocular cell type. B. Number of studies for each ocular predicted cell type (over 10 cells), colored by species. C. Tabulation of the number of studies present across {num1} ocular and {num2} non-ocular tissues, D. Web app timings (lower is better) for important functions compared between PLAE, Spectacle, and Tabula Sapiens (see methods for more details)."))
 
 study_count_by_tissue <- meta_filter %>%
   mutate(Organ = case_when(Organ == 'Eye' ~ 'Eye',
@@ -168,6 +170,7 @@ study_count_by_tissue <- meta_filter %>%
   group_by(Organ, Tissue, organism) %>% 
   summarise(Count = n()) %>%
   ungroup() %>% 
+  mutate(Organ = factor(Organ, levels = c('Eye','Body'))) %>% 
   ggplot(aes(x=Tissue,y=Count, fill = organism, label = Count, group = organism)) +
   ylab('Number of Studies') +
   geom_bar(stat='identity', position='stack') +
@@ -225,8 +228,8 @@ timings <- rbind(
 row.names(timings) <- c('Initial Page',
                         'Cell Type Colored UMAP',
                         'Abca4 Expression UMAP',
-                        'Boxplot of Abca4 Expression By CellType Across All Studies',
-                        'Boxplot of Abca4 Expression By CellType Across One Study',
+                        'Boxplot of Abca4 Expression By Cell Type Across All Studies',
+                        'Boxplot of Abca4 Expression By Cell Type Across One Study',
                         'Dotplot of Abca4, Pax6, Nrl, and Atoh7',
                         'Heatmap of Abca4, Pax6, Nrl, and Atoh7',
                         'Table of Differentially Expressed Genes between Bipolar and Cone Cells'
@@ -252,8 +255,11 @@ breaks_fun <- function(x) {
 timing_plot <- timings %>% as_tibble(rownames = 'Test') %>% 
   pivot_longer(-Test) %>% 
   mutate(Test = factor(Test, levels = row.names(timings))) %>% 
-  ggplot(aes(x=name,y=value)) + 
+  mutate(Text = case_when(is.na(value) ~ 'Not possible',
+                          TRUE ~ '')) %>% 
+  ggplot(aes(x=name,y=value, label = Text)) + 
   geom_bar(stat= 'identity') + 
+  geom_text(aes(y=0), hjust = 0, angle = 90) +
   facet_wrap(~Test, scales = 'free_y', ncol = 2) + 
   xlab('Resource') + 
   ylab('Seconds to Load') + 
@@ -264,12 +270,12 @@ timing_plot <- timings %>% as_tibble(rownames = 'Test') %>%
 
 
 
-ab <- cowplot::plot_grid(cell_counts + theme(legend.position = "none"), 
-                         study_counts_by_cell, 
+ab <- cowplot::plot_grid(cell_counts + theme(legend.position = "none", axis.ticks.y = element_blank()), 
+                         study_counts_by_cell + theme(axis.ticks.y = element_blank()), 
                          nrow = 1, 
                          rel_widths = c(1,1), labels = c('a','b'))
 
-cd <- cowplot::plot_grid(study_count_by_tissue, 
+cd <- cowplot::plot_grid(study_count_by_tissue + theme(axis.ticks.y = element_blank()), 
                          timing_plot, 
                          nrow = 1, 
                          rel_widths = c(0.7,1),
@@ -282,7 +288,9 @@ cowplot::plot_grid(ab, cd, ncol = 1, rel_heights = c(1,0.8))
 
 ## PLAE resource contains several crucial features relative to other single cell resources
 
-Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingressed a large number of published single cell datasets The UCSC Cell Browser has around sixty thousand ocular single cell transcriptomes while the PangloaDB has about 47 thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cells in the mouse; while it only contains around around 10 thousand ocular cells it can be more readily cross compared to non-ocular tissues / cells. The Protein Atlas resource has recently used one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has collated a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the cell and sample level metadata, re-processing of the data from the raw sequence, and, crucially, full availability of the underlying data for outside usage and integrating the independent studies to deliver cross study comparisons. 
+Several single cell RNA-seq web-based resources contain ocular data (`r tab_cap(name = 'web_resources', display = 'cite')`). The UCSC Cell Browser, Tabula Sapiens portal, PanglaoDB, and Protein Atlas are not ocular focused, but do contain some ocular data. The PanglaoDB and UCSC are resources which have ingressed a large number of published single cell datasets The UCSC Cell Browser has around sixty thousand ocular single cell transcriptomes while the PangloaDB has about forty-seven thousand. However, these resources provide no curation of the metadata and process the data for each study individually. Thus each study is effectively silo-ed off from the rest and cross comparisons are impractical. The Tabula Sapiens project is an effort to sequence all cell type transcriptomes in humans; while it only contains around around ten thousand ocular cells it can be more readily cross compared to non-ocular tissues / cells. A more substantial downside is that the cell type labels can be insufficient - for example rods and cones are not independently identified but rather labelled as photoreceptors. The Protein Atlas resource has recently used only one retina single cell RNA-seq paper to provide cell type label focused information for gene queries (e.g. one can see whether a gene of interest is enriched in Cones). This is problematic as it is unclear whether signal found is specific to the one dataset they use or is common across independent species and datasets.
+
+The Spectacle web resource is the closest comparison to PLAE, as it is a ocular focused resource which has collated a large number of ocular single cell RNA-seq resources (both organoid and tissue based datasets total well over a million cells) and made them available on a web app. PLAE is distinguished from these resources by hand curation of the cell and sample level metadata, re-processing of the data from the raw sequence in a consistent manner, and, crucially, full availability of the underlying data for outside usage and integrating the independent studies to deliver cross study comparisons. 
 
 
 ```{r web_resources, fig.height = 15, fig.width = 20, echo = F, message = F, results = 'asis', fig.cap=web_resources_cap}
@@ -292,7 +300,7 @@ w = i*0.3937 # width of the side borders in the word_document output (in inches)
 
 
 
-web_resources_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15.')
+web_resources_cap <- tab_cap(name = 'web_resources', caption = 'Comparison of PLAE with other web resources that contain single cell ocular datasets, as of 2021-03-15. The Protein Atlas is asterisked as while it contains independent datasets, it only has one ocular study. ')
 
 cat("<div id=\"tbl:web_resources\">")
 
@@ -315,11 +323,11 @@ cat(paste0("\n*",web_resources_cap,"*\n"))
 cat("</div>")
 ```
 
-While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers of ocular-related scRNA datasets, they are structured differently[@voigtSpectacleInteractiveResource2020]. PLAE is built around the scEiaD database, which use a multi-stage pipeline to build and identify a high performing scVI-based single cell RNA eye model that is used to integrate all datasets together [@swamyBuildingMegaSinglecell2021]. This allows for gene queries to be constructed and analyzed across studies. In contrast, Spectacle, as of March 2022, is a compilation of study-level datasets and thus you cannot run queries across studies. Furthermore, Spectacle contains no non-ocular dataset and the cell types labels have not been curated or harmonized between studies. Finally, the Spectacle web app takes many seconds to load an individual dataset and many more to display the data.
+While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers of ocular-related scRNA datasets, they are structured differently[@voigtSpectacleInteractiveResource2020]. PLAE is built around the scEiaD database, which use a multi-stage pipeline to build and identify a high performing scVI-based single cell RNA eye model that is used to integrate all datasets together [@swamyBuildingMegaSinglecell2021]. This allows for gene queries to be constructed and analyzed across studies. In contrast, Spectacle, as of March 2022, is a compilation of study-level datasets and thus you cannot run queries across studies. Spectacle contains no non-ocular dataset and the cell types labels have not been curated or harmonized between studies (for example different studies can use MG, Mueller, Müller Glia, or other variations to refer to the same cell type). Finally, in contrast to PLAE, Spectacle does not make their datasets available for download in any form. 
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
-There are two interwoven reasons why the PLAE app is quick, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this approach requires a large amount of disk storage, which can make local (on personal computer) usage difficult; the scEiaD v2022-03-22 sqlite database is about 368 GB. Second, the visualization code in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) to reduce drawing time. In contrast, starting from the loading page of Spectacle, it takes approximately eleven seconds to plot the cell type metadata for a several thousand cells across across a single study (tested on 2022-08-26). In the same amount of time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies (`r fig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')d`). The speed of the PLAE app is also comparable in several ways to the CELLXGENE browser while providing additional bar and dot plot functionality. 
+There are two interwoven reasons why the PLAE app is quick, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this approach requires a large amount of disk storage, which can make local (on personal computer) usage difficult; the scEiaD v2022-03-22 sqlite database is about 368 GB. Second, the visualization code in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) to reduce drawing time. In contrast, starting from the loading page of Spectacle, it takes approximately eleven seconds to plot the cell type metadata for a several thousand cells across across a single study (tested on 2022-08-26). Within the same time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies (`r fig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')d`). The speed of the PLAE app is also comparable to the CELLxGENE browser serving the Tabula Sapiens resource while providing additional functionality. 
 
 ## Rich web-available visualizations 
 
@@ -340,7 +348,7 @@ knitr::include_graphics('fig/fig1.png')
 
 We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping (see Methods). This created a counts matrix which has statistical properties approximating "bulk" RNA seq experiment matrices. This allowed the use of the more mature bulk RNA-seq tooling. This approach has also been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments[@squairConfrontingFalseDiscoveries2021]. Once the pseudo-bulk matrix was constructed, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. Chicken was not included as we had an insufficient number of independent studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). Unless stated otherwise, we will be discussing the results of the "against all" contrast for the remainder of the paper. 
 
-Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltype combinations that are significantly differentially expressed. We define significant as a log2 fold change greater than two as well as a p-value (corrected) less than $1 x 10^-5#. We find a mean of 
+Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltype combinations that are significantly differentially expressed. We define significant as a log2 fold change greater than two as well as a p-value (corrected) less than $1 x 10^-5$. We find a mean of 
 `r diff_tab_sup$"Homo sapiens" %>% mean() %>% round()`, 
 `r diff_tab_sup$"Mus musculus" %>% mean() %>% round()`, and 
 `r diff_tab_sup$"Macaca fascicularis" %>% mean() %>% round()` differentially expressed genes in human, macaque, and mouse respectively (`r supTab_cap(name = 'diff_tab_sup_tab', display = 'cite')`). These variable results directly reflect the differing number of independent studies - mouse and human have substantially more than macaque (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). The significant filtered differential table is made available as supplementary file "differential_expression_table.csv.gz" and the full differential tables are available for download at plae.nei.nih.gov -> Data. 
