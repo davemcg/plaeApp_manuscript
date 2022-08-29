@@ -1,0 +1,94 @@
+# return PMID for query
+library(easyPubMed)
+library(tidyverse)
+#load('~/data/massive_integrated_eye_scRNA/top_markers.Rdata')
+library(pool)
+library(RSQLite)
+
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
+
+pubmed_counter <- function(query, sleep_time = 0.2, api_key = '8d33dae565ca3a523495197da36cc085d308'){
+  Sys.sleep(sleep_time)
+  pub_query <- query
+  entrez_id <- get_pubmed_ids(pub_query, api_key = api_key)
+  if (entrez_id$Count == 0){
+    out <- NA
+  } else {
+    abstracts_txt <- fetch_pubmed_data(entrez_id, format = "abstract") 
+    out <- grep('PMID', abstracts_txt, value = TRUE) %>% str_extract(., '\\d\\d\\d+') %>% unique()}
+  out
+}
+
+ctr <- meta_filter %>% filter(Tissue == 'Retina') %>% pull(CellType)
+
+queries <- consist_diff %>% 
+  filter(Base %in% ctr) %>% 
+  mutate(Base2 = gsub('Cell','',Base),
+         Base2 = case_when(Base2 == 'AC/HC Precursor' ~ 'Amacrine Horizontal',
+                          grepl('RPC', Base2) ~ 'Progenitor',
+                          TRUE ~ Base2)) %>% 
+  mutate(Symbol = case_when(Symbol == 'TF' ~ 'Transferrin',
+                            Symbol == 'CP' ~ 'ceruloplasmin',
+                            Symbol == 'F3' ~ 'Coagulation Factor III',
+                            Symbol == 'HR' ~ 'hairless',
+                            TRUE ~ Symbol)) %>% 
+  mutate(
+    pm_query0 = paste0(Symbol),
+    pm_query1 = paste0(Symbol, ' AND ', Base2),
+    pm_query2 = paste0(Symbol, ' AND Retina'))
+
+pmid0 <- list()
+for (i in unique(queries$pm_query0)){
+  print(i)
+  pmid0[[i]] <- pubmed_counter(i)
+}
+
+pmid1 <- list()
+for (i in unique(queries$pm_query1)){
+  print(i)
+  #Sys.sleep(1)
+  pmid1[[i]] <- pubmed_counter(i)
+}
+
+pmid2 <- list()
+for (i in unique(queries$pm_query2)){
+  print(i)
+  #Sys.sleep(1)
+  pmid2[[i]] <- pubmed_counter(i)
+}
+
+
+set.seed(1423)
+all_genes <- scEiaD_2020_v01 %>% tbl('Genes') %>% pull(Gene) %>% gsub(' \\(.*','', .)
+all_diff_symbol <- diff_tab %>% filter(padj < 0.01) %>% pull(Symbol) %>% unique()
+
+
+rand_not_marker0 <- all_genes[!all_genes %in% queries$Symbol] 
+rand_not_marker1 <- all_genes[!all_genes %in% all_diff_symbol] 
+
+rand_not_marker0_sample <- rand_not_marker0[sample(1:length(rand_not_marker0), 500)]
+rand_not_marker1_sample <- rand_not_marker1[sample(1:length(rand_not_marker1), 500)]
+
+pm_query3 <- paste0(rand_not_marker0_sample, ' AND Retina')
+pmid3 <- list()
+for (i in pm_query3){
+  print(i)
+  #Sys.sleep(1)
+  pmid3[[i]] <- pubmed_counter(i)
+}
+# pmid2 <- list()
+# for (i in x$pm_query2){
+#   print(i)
+#   #Sys.sleep(1)
+#   pmid2[[i]] <- pubmed_counter(i)
+# }
+
+save(pmid0, pmid1, pmid2, file = 'data/top_marker_pmid.Rdata')
+queries <- queries %>% left_join(., pmid0 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query0=value), by = c("Symbol" = "name")) 
+queries <- queries %>% left_join(., pmid1 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query1=value), by = c("pm_query1" = "name")) 
+queries <- queries %>% left_join(., pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query2=value), by = c("pm_query2" = "name"))
+
+save(top_markers, marker_info, exp_stats, file = '~/data/scEiaD/top_markers.Rdata')
+#pmid %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe()
+#pmid %>% map(function(x) paste %>% unlist() %>% enframe()
