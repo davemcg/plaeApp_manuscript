@@ -111,5 +111,5 @@ for (i in pm_query4){
 queries <- queries %>% left_join(., pmid0 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query0=value), by = c("Symbol" = "name")) 
 queries <- queries %>% left_join(., pmid1 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query1=value), by = c("pm_query1" = "name")) 
 queries <- queries %>% left_join(., pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query2=value), by = c("pm_query2" = "name"))
-save(pmid0, pmid1, pmid2, pmid3, queries, file = 'data/top_marker_pmid.Rdata')
+save(pmid0, pmid1, pmid2, pmid3, pmid4, queries, file = 'data/top_marker_pmid.Rdata')
 
