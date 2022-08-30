@@ -13,6 +13,14 @@ pubmed_counter <- function(query, sleep_time = 0.2, api_key = '8d33dae565ca3a523
   pub_query <- query
   entrez_id <- get_pubmed_ids(pub_query, api_key = api_key)
   if (entrez_id$Count == 0){
+    # run one more time, with a 0.5 second delay
+    Sys.sleep(3)
+    print("RERUN")
+    entrez_id <- get_pubmed_ids(pub_query, api_key = api_key)
+  }
+  if (entrez_id$Count == 0){
+    # then give up and return NA
+    print("NA")
     out <- NA
   } else {
     abstracts_txt <- fetch_pubmed_data(entrez_id, format = "abstract") 
@@ -20,23 +28,30 @@ pubmed_counter <- function(query, sleep_time = 0.2, api_key = '8d33dae565ca3a523
   out
 }
 
-ctr <- meta_filter %>% filter(Tissue == 'Retina') %>% pull(CellType)
+#ctr <- meta_filter %>% filter(Tissue == 'Retina') %>% pull(CellType)
 
 queries <- consist_diff %>% 
-  filter(Base %in% ctr) %>% 
+  filter(Symbol %in% consist_diff_genes) %>% 
+  #filter(Base %in% ctr) %>% 
   mutate(Base2 = gsub('Cell','',Base),
          Base2 = case_when(Base2 == 'AC/HC Precursor' ~ 'Amacrine Horizontal',
                           grepl('RPC', Base2) ~ 'Progenitor',
                           TRUE ~ Base2)) %>% 
-  mutate(Symbol = case_when(Symbol == 'TF' ~ 'Transferrin',
+  mutate(Symbol2 = case_when(Symbol == 'TF' ~ 'Transferrin',
                             Symbol == 'CP' ~ 'ceruloplasmin',
                             Symbol == 'F3' ~ 'Coagulation Factor III',
                             Symbol == 'HR' ~ 'hairless',
                             TRUE ~ Symbol)) %>% 
   mutate(
-    pm_query0 = paste0(Symbol),
-    pm_query1 = paste0(Symbol, ' AND ', Base2),
-    pm_query2 = paste0(Symbol, ' AND Retina'))
+    pm_query0 = paste0(Symbol2),
+    pm_query1 = paste0(Symbol2, ' AND ', Base2),
+    pm_query2 = paste0(Symbol2, ' AND Retina'))
+
+# heatmap_fig_genes <- list()
+# for (i in consist_diff_genes){
+#   print(i)
+#   heatmap_fig_genes[[i]] <- pubmed_counter(i)
+# }
 
 pmid0 <- list()
 for (i in unique(queries$pm_query0)){
@@ -70,12 +85,20 @@ rand_not_marker1 <- all_genes[!all_genes %in% all_diff_symbol]
 rand_not_marker0_sample <- rand_not_marker0[sample(1:length(rand_not_marker0), 500)]
 rand_not_marker1_sample <- rand_not_marker1[sample(1:length(rand_not_marker1), 500)]
 
-pm_query3 <- paste0(rand_not_marker0_sample, ' AND Retina')
+pm_query3 <- paste0(rand_not_marker1_sample, ' AND Retina')
 pmid3 <- list()
 for (i in pm_query3){
   print(i)
   #Sys.sleep(1)
   pmid3[[i]] <- pubmed_counter(i)
+}
+
+pm_query4 <- rand_not_marker1_sample
+pmid4 <- list()
+for (i in pm_query4){
+  print(i)
+  #Sys.sleep(1)
+  pmid4[[i]] <- pubmed_counter(i)
 }
 # pmid2 <- list()
 # for (i in x$pm_query2){
@@ -90,6 +113,3 @@ queries <- queries %>% left_join(., pmid1 %>% map(function(x) sum(!is.na(x))) %>
 queries <- queries %>% left_join(., pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query2=value), by = c("pm_query2" = "name"))
 save(pmid0, pmid1, pmid2, pmid3, queries, file = 'data/top_marker_pmid.Rdata')
 
-save(queries, file = 'data/top_markers.Rdata')
-#pmid %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe()
-#pmid %>% map(function(x) paste %>% unlist() %>% enframe()
