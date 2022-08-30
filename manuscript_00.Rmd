@@ -423,15 +423,25 @@ consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Ro
 # consist_diff_genes <- row.names(consist_diff_wide) %>% gsub(' \\(.*','',.)
 # 
 # consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = value) %>% left_join(consist_diff %>% select(Symbol, Base) %>% unique()) %>% pull(Base)
+cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>% left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) 
 
+rand_nums <- floor(runif(nrow(consist_diff_wide), min=0, max=3))
+rand_col <-  circlize::colorRamp2(c(-0, 1, 2), c("white", "gray", "black"))
 
-consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, column_labels = consist_diff_organism, 
+consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, 
+                                           column_labels = consist_diff_organism, 
                                            column_split = consist_diff_cts, 
-                                           row_split = consist_diff_base, show_row_dend = FALSE, 
-                                           row_labels = consist_diff_genes, 
+                                           row_split = consist_diff_base, 
+                                           show_row_dend = FALSE, 
                                            column_title_rot = 90, 
                                            name = 'log2FC', use_raster = TRUE,
-                                           row_title_rot = 0)
+                                           row_title_rot = 0) + 
+  ComplexHeatmap::Heatmap(rand_nums,
+                          row_split = consist_diff_base,
+                          col = rand_col,
+                          row_labels = consist_diff_genes,
+                          column_labels = "Pubmed Gene Citations",
+                          column_names_side = 'top')
 ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
 #toc()
 ```
