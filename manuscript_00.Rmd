@@ -360,13 +360,16 @@ We used a "pseudo-bulk" based approach where the counts for a category (CellType
 Cell type marker genes can be proposed on the basis of existing knowledge about their function and on high expression differences when comparing to other cell types. We can further narrow down the list of markers by using the high diversity of studies and organisms in scEiaD to propose a set of community supported cell type markers. We first identify a set of well supported cell types which we define as cell types which have two or more independent studies across both human and mouse (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). These cell types were then assessed to identify differentially expressed genes which met the following criteria across human, mouse, and macaque: 1. padj less than $1 x 10^-4$
 in two or more species, 2. mean log2 fold change greater than 2, and 3. mean padj less than $1 x 10^-5$. A final filter was applied to remove genes as candidates if they were differentially expressed (using the criteria above) in more than three different cell types. This left us with `r top_genes %>% nrow()` gene - cell type markers, a substantial reduction from the `r diff_tab %>% nrow()` we had initially. We provide a table of these genes as supplementary file "consistently_differentially_expressed_genes.csv.gz." 
 
-To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`). We see that human, mouse, and macaque have similar expression patterning of the proposed markers across the well supported cell types. The cell types are arranged by the columns by how related the expression patterns are. We see how the differentiated cell types of the retina are grouped together with the exception of the Müller glia, which are next to the RPC from which they derive from. The photoreceptors are also next to each other.
+To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`). We see that human, mouse, and macaque have similar expression patterning of the proposed markers across the well supported cell types. The cell types are arranged by the columns by how related the expression patterns are. We see how the differentiated cell types of the retina are grouped together with the exception of the Müller glia, which are near the RPC from which they derive from. The photoreceptors are also next to each other.
 
-Aasdfasdfasdfadsf
+To assess whether this marker selection was identifying known or potentially novel marker genes we ran several sets of queries against PubMed. We searched for the gene name or the gene name plus " AND Retina" across all well supported genes against the PubMed database, counting how many citations were returned. In contrast we also selected 1000 random genes that were not considered differentially expressed and ran the same PubMed searches. We find a substantial enrichment of citations for our well supported differentially expressed genes (t test, p < 6.7x10-98 and p < 2.4x10-12) for the gene and gene " and retina" PubMed searches when compared against the 1000 random genes, respectively. To display the results of this search for each individual gene we show visually whether the number of citations returned is less or equal than the median citation count for the random gene set ("few"), more than the median ("some"), or more than the mean ("many"). We see that nearly all genes in (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`) reflect existing knowledge. 
+
+Genes which have little existing knowledge can be considered 
 
 Of course other possibilities for ranking genes are possible. We show in `r supFig_cap(name = 'PLAE_screenshots_supplemental', display = 'cite')`b and c how you can directly use our powerful web app to select candidate bipolar cell differentially expressed genes from the differential testing table and then quickly display the expression pattern of those genes in a compact heatmap visualization. The wealth of visualization options in plae allow for quick prototyping and hypothesis testing of gene expression patterning across a large number of cells and studies. 
 
 ```{r echo = F, message = F, }
+
 # tic()
 # ws_oct <- ws_table %>% filter(`Well Supported` == 'Yes') %>% pull(`CellType (Predict)`)
 # 
@@ -396,7 +399,10 @@ sup_tab_consist_diff <- top_genes %>% select(Symbol, Base) %>% left_join(consist
 ```
 
 ```{r consist_genes_heatmap, fig.height=22, fig.width=10, echo = F, message = F,  fig.cap=consist_genes_heatmap_cap}
-consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Rows are genes, columns are cell types and organisms. Rows are split by what cell type the gene is a marker for. Columns are split by the cell types. More red is a higher log2 fold change of the gene - cell type relative to all other cell types and blue is more negative.')
+consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Rows are genes, columns are cell types and organisms. Rows are split by what cell type the gene is a marker for. Columns are split by the cell types. More red is a higher log2 fold change of the gene - cell type relative to all other cell types and blue is more negative. Relative number of citations are shown for the gene or gene " and retina" when searching against PubMed compared to 1000 randomly chosen genes.')
+
+
+load('data/top_marker_pmid.Rdata')
 
 # tic()
 # g <- consist_diff %>% filter(Symbol %in% uniq_g$Symbol) %>% group_by(Base) %>% slice_max(n=8, order_by = `mean log2FC`) %>% mutate(g = paste0(Symbol, ' (', ID, ')')) %>% pull(g)
@@ -427,26 +433,57 @@ consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Ro
 # consist_diff_genes <- row.names(consist_diff_wide) %>% gsub(' \\(.*','',.)
 # 
 # consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = value) %>% left_join(consist_diff %>% select(Symbol, Base) %>% unique()) %>% pull(Base)
-cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>% left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) 
+# pmid0 and pmid4 is just GENE
+# (t.test(pmid0 %>% map(function(x) sum(!is.na(x))) %>% unlist(), pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()))$p.value
+query0 <- cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>%
+  left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>%
+  mutate(citation = case_when(
+    query0 > mean(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query0 > median(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    TRUE ~ "Few")) %>%
+  pull(citation)
 
-rand_nums <- floor(runif(nrow(consist_diff_wide), min=0, max=3))
-rand_col <-  circlize::colorRamp2(c(-0, 1, 2), c("white", "gray", "black"))
+# pmid2 and pmid3 is "AND RETINA"
+# (t.test(pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist(), pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()))$p.value
+query2 <- cbind(consist_diff_genes, consist_diff_base) %>%
+  as_tibble() %>%
+  left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>%
+  mutate(citation = case_when(
+    query2 > mean(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query2 > median(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    TRUE ~ "Few")) %>%
+  pull(citation)
+#rand_col <-  circlize::colorRamp2(c('0', '1', '2'), c("white", "gray", "black"))
+citation_col <-c('white','gray','black')
+names(citation_col) <-  c('Few','Some','Many')
 
-consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, 
-                                           column_labels = consist_diff_organism, 
-                                           column_split = consist_diff_cts, 
-                                           row_split = consist_diff_base, 
-                                           show_row_dend = FALSE, 
-                                           column_title_rot = 90, 
+
+
+
+consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide,
+                                           column_labels = consist_diff_organism,
+                                           column_split = consist_diff_cts,
+                                           row_split = consist_diff_base,
+                                           show_row_dend = FALSE,
+                                           column_title_rot = 90,
                                            name = 'log2FC', use_raster = TRUE,
-                                           row_title_rot = 0) + 
-  ComplexHeatmap::Heatmap(rand_nums,
+                                           row_title_rot = 0) +
+  ComplexHeatmap::Heatmap(as.character(query0),
                           row_split = consist_diff_base,
-                          col = rand_col,
+                          col = citation_col,
                           row_labels = consist_diff_genes,
+                          show_heatmap_legend = FALSE,
                           column_labels = "Pubmed Gene Citations",
+                          column_names_side = 'top') +
+  ComplexHeatmap::Heatmap(as.character(query2),
+                          row_split = consist_diff_base,
+                          col = citation_col,
+                          row_labels = consist_diff_genes,
+                          name = 'Citation Count',
+                          column_labels = "Pubmed Gene + \"Retina\" Citations",
                           column_names_side = 'top')
 ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
+
 #toc()
 ```
 
@@ -607,17 +644,19 @@ While we have provided data in many forms via the web app at plae.nei.nih.gov, t
 
 Our differential testing found that while Prph2, Rs1, and Gngt1 had expression differences matching that the findings Yan et al. and Peng et al. published, they failed to replicate in our test with pvalue and padj being above 0.1 for all three. In contrast Calb1 did replicate strongly with the sixth lowest padj (0.00721) across our entire test and a log2 fold change of 2.87. We find six more genes with a padj < 0.01: Pde6g, Akap12, Hspb1, Gadd45b, Cc2d2a, and RP1l1 (`r fig_cap(name = 'region_fig', display = 'cite')` and `r supTab_cap(name = 'region_table', display = 'cite')`). None of these candidate cone region marker genes display regionally different expression in rods (`r supFig_cap(name = 'rod_region_fig', display = 'cite')`).
 
-# Conclusions
-
 ## Limitations of scEiaD 
 
-The longer term goal is to continue adding datasets to the scEiaD at plae.nei.nih.gov until we have three or more independent datasets per species and nearly all cell types. Earlier we proposed well supported cell types. Right now, most of these well supported cell types are in the retina. The RPE behind the retina, the cornea and lens in front, and the outflow tract and supporting musculature still could use more independent studies. Many common human diseases underlie the RPE (e.g. AMD) and the cornea (e.g. Keratoconus) and these tissues will remain a focus for the next update of our database. While we have curated a large number of cell types across the eye, many of these cell types have "sub" cell types. For examplethe human has three types of cones that are optimized for short, medium, and long wavelengths. More dramatically, Yan et al. have proposed over sixty types of mouse amacrine cell types [@yanMouseRetinalCell2020a]. While we have found it fairly straightforward to use machine learning to transfer the broad (e.g. rod, cone, amacrine) cell type labels across all datasets, we have found it very challenging to transfer the "sub" cell type labels. This is largely because while we have high diversity of studies for the broad cell types, this is not true for most of the sub celltypes. We believe more datasets that carefully dissect the sub-celltypes may be necessary to confidently propose the sub-celltypes of the retina. Finally, while our scVI based model can theoretically be used by an outside group to transfer their internal data into the scEiaD latent space, it is very challenging to implement as the the software landscape is still rapidly changing and it is very difficult to architect consistent outputs over time with regularly changing software versions. We are investigating simpler methods to enable transfer of knowledge from scEiaD to outside data. 
+The longer term goal is to continue adding datasets to the scEiaD at plae.nei.nih.gov until we have three or more independent datasets per species and most ocular cell types. Earlier we proposed well supported cell types. Right now, most of these well supported cell types are in the retina. The RPE behind the retina, the cornea and lens in front, and the outflow tract and supporting musculature still could use more independent studies. Many common human diseases underlie the RPE (e.g. AMD) and the cornea (e.g. Keratoconus) and these tissues will remain a focus for the next update of our database. While we have curated a large number of cell types across the eye, many of these cell types have "sub" cell types. For examplethe human has three types of cones that are optimized for short, medium, and long wavelengths. More dramatically, Yan et al. have proposed over sixty types of mouse amacrine cell types [@yanMouseRetinalCell2020a]. While we have found it fairly straightforward to use machine learning to transfer the broad (e.g. rod, cone, amacrine) cell type labels across all datasets, we have found it very challenging to transfer the "sub" cell type labels. This is largely because while we have high diversity of studies for the broad cell types, this is not true for most of the sub celltypes. We believe more datasets that carefully dissect the sub-celltypes may be necessary to confidently propose the sub-celltypes of the retina. Finally, while our scVI based model can theoretically be used by an outside group to transfer their internal data into the scEiaD latent space, it is very challenging to implement as the the software landscape is still rapidly changing and it is very difficult to architect consistent outputs over time with regularly changing software versions. We are investigating simpler methods to enable transfer of knowledge from scEiaD to outside data. 
+
+
+# Conclusions
+
 
 ## High feature web app provides quick access to over one million transcriptomes across `r meta_filter$study_accession %>% unique %>% length` datasets
 
 We have improved on the scEiaD dataset we published in Swamy et al. [@swamyBuildingMegaSinglecell2021] by adding another species (chicken), new ocular tissues, a human non-ocular reference set; in total `r meta_filter$Citation %>% unique() %>% length() - meta_filter_v0$Citation %>% unique() %>% length()` new single cell datasets. We re-structured the data into a custom database to enable our custom built high performance web app to quickly access the data. This democratizes access to over a million cells across `r meta_filter$study_accession %>% unique() %>% length()` studies to anyone with a web browser. We recognize that while we have built a powerful visualization platform we cannot anticipate all uses and for those researchers who wish to make custom queries of the data, we provide the data underlying plae in a wide variety of formats, including anndata and Seurat objects for each study, count tables, cell level metadata, and the DESeq2 based differential testing across three species. We provide a short example of how a custom query could work by running a custom differential test between macula and peripheral derived human cones and demonstrate how this can both validate existing proposed genes and suggest new ones. 
 
-## High diversity of studies enables reproduction and extension of cell type gene expression findings
+## Diversity of studies enables reproduction and extension of cell type gene expression findings
 
 A great many groups have proposed cell atlases. These range from efforts focusing on a subset of cells from a single layer of a tissue (for example [@tranSingleCellProfilesRetinal2019a] ) to a huge consortium encompassing multiple organs [@consortiumTabulaSapiensSingle2021]. We propose a complementary approach wherein we use the research data from the community at large to create a meta-atlas. This approach enables a small group to produce an atlas which rivals the size from massive multi-group consortiums. Furthermore the inherent variability between the data from independent groups can be used as a feature to get insight into whether a gene cell type signal is stable across an entire community's datasets. We briefly demonstrate how the high study diversity in scEiaD can be used to validate proposed RPC to neurogenic gene expression changes. 
 
@@ -839,6 +878,29 @@ plot_grid(a_aa_b, c_d , e ,
 #toc()()
 ```
 
+```{r undersupported_genes, fig.height=48, fig.width=8, echo = FALSE}
+cone_undersupported <- queries %>% filter(query2 <= 1) %>% arrange(-`mean log2FC`) %>% filter(!grepl("Endo|Macro|Micro|Endo", Base)) %>% group_by(Symbol) %>% summarise(Count = n(), Base = paste0(Base, collapse = ', '), l2FC = mean(`mean log2FC`)) %>% filter(Count == 1) %>% filter(Base == 'Rod') %>% arrange(-l2FC)
+
+
+
+
+
+input <- list()
+input$exp_plot_groups <- c('study_accession')
+input$exp_plot_facet <- c('CellType_predict')
+input$exp_plot_genes <- scEiaD_2020_v01 %>% tbl('Genes') %>% collect() %>% mutate(Symbol = str_extract(Gene, '.* \\(') %>% gsub(' \\(','',.)) %>% filter(Symbol %in% cone_undersupported$Symbol) %>% pull(Gene)
+input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
+input$exp_plot_col_num <- 16
+input$exp_filter_min_cell_number <- 50
+input$flip_facet <- FALSE
+input$figure <- FALSE
+input$figure_bloop <- TRUE
+input$figure_fovea <- FALSE
+
+
+make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+
+```
 ```{r PLAE_screenshots_supplemental, echo = F, message = F, fig.cap = PLAE_screenshots_supplemental_cap}
 PLAE_screenshots_supplemental_cap <- supFig_cap(name='PLAE_screenshots_supplemental', caption = 'a. Recreation of Figure 4 directly in the plae.nei.nih.gov web app. b. Identify potential bipolar cell markers with the precomputed differential testing and in c. visualize the top five genes with a Heatmap.')
 knitr::include_graphics('fig/plae_sup_fig_screenshots.png')

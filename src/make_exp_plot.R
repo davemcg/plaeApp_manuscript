@@ -14,6 +14,9 @@ make_exp_plot <- function(input, db, meta_filter){
   
   grouping_features <- input$exp_plot_groups
   
+  if (!'figure_bloop' %in% names(input)){
+    input$figure_bloop <- FALSE
+  } 
   
   meta_filter_EXP <- meta_filter
   if (!is.null(input$exp_filter_cat)){
@@ -135,6 +138,19 @@ make_exp_plot <- function(input, db, meta_filter){
       scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
       theme(legend.position="bottom") +
       facet_wrap(ncol = as.numeric(input$exp_plot_col_num), ~Gene + retina_region) 
+  }    else if (input$figure_bloop){
+    box_data  %>% 
+      mutate(Gene = str_extract(Gene, '^\\w+ ') %>% gsub(" $", '', .)) %>%
+      ungroup() %>% 
+      ggplot(aes(x=!!as.symbol(input$exp_plot_facet), y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features), group = CellType_predict)) +
+      geom_boxplot(color = 'black', outlier.shape = NA) +
+      ggbeeswarm::geom_quasirandom(size = 4, groupOnX = TRUE) +
+      cowplot::theme_cowplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      scale_radius(range=c(2, 6)) +
+      scale_colour_manual(values = rep(c(pals::alphabet() %>% unname()), 20)) +
+      theme(legend.position="bottom") +
+      facet_wrap(ncol = 1, ~Gene, scales = 'free_y') 
   }
   else {
     box_data %>%
