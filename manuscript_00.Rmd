@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 #tic()()
-#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -82,11 +82,8 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
 
 load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 
-#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
-
+data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
@@ -347,21 +344,25 @@ PLAE_screenshots_cap <- fig_cap(name='PLAE_screenshots', caption = 'Screenshots 
 knitr::include_graphics('fig/fig1.png')
 ```
 
-## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types
+<!-- ## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types -->
 
-We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping (see Methods). This created a counts matrix which has statistical properties approximating "bulk" RNA seq experiment matrices. This allowed the use of the more mature bulk RNA-seq tooling. This approach has also been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments[@squairConfrontingFalseDiscoveries2021]. Once the pseudo-bulk matrix was constructed, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. Chicken was not included as we had an insufficient number of independent studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). Unless stated otherwise, we will be discussing the results of the "against all" contrast for the remainder of the paper. 
 
-Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltype combinations that are significantly differentially expressed. We define significant as a log2 fold change greater than two as well as a p-value (corrected) less than $1 x 10^-5$. We find a mean of 
-`r diff_tab_sup$"Homo sapiens" %>% mean() %>% round()`, 
-`r diff_tab_sup$"Mus musculus" %>% mean() %>% round()`, and 
-`r diff_tab_sup$"Macaca fascicularis" %>% mean() %>% round()` differentially expressed genes in human, macaque, and mouse respectively (`r supTab_cap(name = 'diff_tab_sup_tab', display = 'cite')`). These variable results directly reflect the differing number of independent studies - mouse and human have substantially more than macaque (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). The significant filtered differential table is made available as supplementary file "differential_expression_table.csv.gz" and the full differential tables are available for download at plae.nei.nih.gov -> Data. 
+
+<!-- Across the cell types of the eye, we find `r diff_tab %>% nrow()` gene - celltype combinations that are significantly differentially expressed. We define significant as a log2 fold change greater than two as well as a p-value (corrected) less than $1 x 10^-5$. We find a mean of  -->
+<!-- `r diff_tab_sup$"Homo sapiens" %>% mean() %>% round()`,  -->
+<!-- `r diff_tab_sup$"Mus musculus" %>% mean() %>% round()`, and  -->
+<!-- `r diff_tab_sup$"Macaca fascicularis" %>% mean() %>% round()` differentially expressed genes in human, macaque, and mouse respectively (`r supTab_cap(name = 'diff_tab_sup_tab', display = 'cite')`). These variable results directly reflect the differing number of independent studies - mouse and human have substantially more than macaque (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). The significant filtered differential table is made available as supplementary file "differential_expression_table.csv.gz" and the full differential tables are available for download at plae.nei.nih.gov -> Data.  -->
 
 ## Well supported ocular cell types identify high confidence cell type markers
+
+We used a "pseudo-bulk" based approach where the counts for a category (CellType, Cluster, or CellType (Predict)) were summed for each category - organism - study grouping (see Methods). This created a counts matrix which has statistical properties approximating "bulk" RNA seq experiment matrices. This allowed the use of the more mature bulk RNA-seq tooling. This approach has also been found to be more specific in identifying differentially expressed genes in single cell RNA-seq experiments[@squairConfrontingFalseDiscoveries2021]. Once the pseudo-bulk matrix was constructed, we use the DESeq2 differential gene expression analysis software to identify differentially expressed genes. We tested each species (Human, Macaque, Mouse) separately. Chicken was not included as we had an insufficient number of independent studies to conduct differential testing. The model used for DESeq2 was "~study_accession + category" in order to regress out study specific differential gene expression. After running these tests we extracted differentially expressed genes with two types of contrasts: either against all remaining categories (e.g. cones versus all remaining cell types) or in a pair-wise manner (cone against rod). Unless stated otherwise, we will be discussing the results of the "against all" contrast for the remainder of the paper. 
 
 Cell type marker genes can be proposed on the basis of existing knowledge about their function and on high expression differences when comparing to other cell types. We can further narrow down the list of markers by using the high diversity of studies and organisms in scEiaD to propose a set of community supported cell type markers. We first identify a set of well supported cell types which we define as cell types which have two or more independent studies across both human and mouse (`r supTab_cap(name = 'well_supported_celltypes_tab', display = 'cite')`). These cell types were then assessed to identify differentially expressed genes which met the following criteria across human, mouse, and macaque: 1. padj less than $1 x 10^-4$
 in two or more species, 2. mean log2 fold change greater than 2, and 3. mean padj less than $1 x 10^-5$. A final filter was applied to remove genes as candidates if they were differentially expressed (using the criteria above) in more than three different cell types. This left us with `r top_genes %>% nrow()` gene - cell type markers, a substantial reduction from the `r diff_tab %>% nrow()` we had initially. We provide a table of these genes as supplementary file "consistently_differentially_expressed_genes.csv.gz." 
 
-To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`). We see that human, mouse, and macaque have similar expression patterning of the proposed markers across the well supported cell types. The cell types are arranged by the columns by how related the expression patterns are. We see how the differentiated cell types of the retina are grouped together with the exception of the Müller glia, which are next to the RPC from which they derive from. The photoreceptors are also next to each other
+To visualize these top markers we select up to eight genes (ordered by the mean log2 fold change across organisms) per well supported cell type for each and plot the log2 fold change of the gene expression relative to all other cell types (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`). We see that human, mouse, and macaque have similar expression patterning of the proposed markers across the well supported cell types. The cell types are arranged by the columns by how related the expression patterns are. We see how the differentiated cell types of the retina are grouped together with the exception of the Müller glia, which are next to the RPC from which they derive from. The photoreceptors are also next to each other.
+
+Aasdfasdfasdfadsf
 
 Of course other possibilities for ranking genes are possible. We show in `r supFig_cap(name = 'PLAE_screenshots_supplemental', display = 'cite')`b and c how you can directly use our powerful web app to select candidate bipolar cell differentially expressed genes from the differential testing table and then quickly display the expression pattern of those genes in a compact heatmap visualization. The wealth of visualization options in plae allow for quick prototyping and hypothesis testing of gene expression patterning across a large number of cells and studies. 
 
@@ -426,29 +427,11 @@ consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Ro
 # consist_diff_genes <- row.names(consist_diff_wide) %>% gsub(' \\(.*','',.)
 # 
 # consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = value) %>% left_join(consist_diff %>% select(Symbol, Base) %>% unique()) %>% pull(Base)
-load('data/top_marker_pmid.Rdata')
+cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>% left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) 
 
-# pmid0 and pmid4 is just GENE
-query0 <- cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>% 
-  left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>% 
-  mutate(citation = case_when(
-    query0 > mean(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
-    query0 > median(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
-    TRUE ~ "Few")) %>% 
-  pull(citation)
+rand_nums <- floor(runif(nrow(consist_diff_wide), min=0, max=3))
+rand_col <-  circlize::colorRamp2(c(-0, 1, 2), c("white", "gray", "black"))
 
-# pmid2 and pmid3 is "AND RETINA"
-query2 <- cbind(consist_diff_genes, consist_diff_base) %>% 
-  as_tibble() %>% 
-  left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>% 
-   mutate(citation = case_when(
-     query2 > mean(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
-     query2 > median(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
-     TRUE ~ "Few")) %>% 
-  pull(citation)
-#rand_col <-  circlize::colorRamp2(c('0', '1', '2'), c("white", "gray", "black"))
-citation_col <-c('white','gray','black') 
-names(citation_col) <-  c('Few','Some','Many')
 consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, 
                                            column_labels = consist_diff_organism, 
                                            column_split = consist_diff_cts, 
@@ -457,20 +440,11 @@ consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide,
                                            column_title_rot = 90, 
                                            name = 'log2FC', use_raster = TRUE,
                                            row_title_rot = 0) + 
-    
-  ComplexHeatmap::Heatmap(as.character(query0),
+  ComplexHeatmap::Heatmap(rand_nums,
                           row_split = consist_diff_base,
-                          col = citation_col,
+                          col = rand_col,
                           row_labels = consist_diff_genes,
-                          show_heatmap_legend = FALSE,
                           column_labels = "Pubmed Gene Citations",
-                          column_names_side = 'top') +
-  ComplexHeatmap::Heatmap(as.character(query2),
-                          row_split = consist_diff_base,
-                          col = citation_col,
-                          row_labels = consist_diff_genes,
-                          name = 'Citation Count',
-                          column_labels = "Pubmed Gene + \"Retina\" Citations",
                           column_names_side = 'top')
 ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
 #toc()
