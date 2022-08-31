@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 #tic()()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -82,8 +82,11 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
 
 load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
@@ -423,11 +426,29 @@ consist_genes_heatmap_cap <- fig_cap(name='consist_genes_heatmap', caption = 'Ro
 # consist_diff_genes <- row.names(consist_diff_wide) %>% gsub(' \\(.*','',.)
 # 
 # consist_diff_base <- consist_diff_genes %>% as_tibble() %>% rename(Symbol = value) %>% left_join(consist_diff %>% select(Symbol, Base) %>% unique()) %>% pull(Base)
-cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>% left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) 
+load('data/top_marker_pmid.Rdata')
 
-rand_nums <- floor(runif(nrow(consist_diff_wide), min=0, max=3))
-rand_col <-  circlize::colorRamp2(c(-0, 1, 2), c("white", "gray", "black"))
+# pmid0 and pmid4 is just GENE
+query0 <- cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>% 
+  left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>% 
+  mutate(citation = case_when(
+    query0 > mean(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query0 > median(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    TRUE ~ "Few")) %>% 
+  pull(citation)
 
+# pmid2 and pmid3 is "AND RETINA"
+query2 <- cbind(consist_diff_genes, consist_diff_base) %>% 
+  as_tibble() %>% 
+  left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>% 
+   mutate(citation = case_when(
+     query2 > mean(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+     query2 > median(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+     TRUE ~ "Few")) %>% 
+  pull(citation)
+#rand_col <-  circlize::colorRamp2(c('0', '1', '2'), c("white", "gray", "black"))
+citation_col <-c('white','gray','black') 
+names(citation_col) <-  c('Few','Some','Many')
 consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide, 
                                            column_labels = consist_diff_organism, 
                                            column_split = consist_diff_cts, 
@@ -436,11 +457,20 @@ consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide,
                                            column_title_rot = 90, 
                                            name = 'log2FC', use_raster = TRUE,
                                            row_title_rot = 0) + 
-  ComplexHeatmap::Heatmap(rand_nums,
+    
+  ComplexHeatmap::Heatmap(as.character(query0),
                           row_split = consist_diff_base,
-                          col = rand_col,
+                          col = citation_col,
                           row_labels = consist_diff_genes,
+                          show_heatmap_legend = FALSE,
                           column_labels = "Pubmed Gene Citations",
+                          column_names_side = 'top') +
+  ComplexHeatmap::Heatmap(as.character(query2),
+                          row_split = consist_diff_base,
+                          col = citation_col,
+                          row_labels = consist_diff_genes,
+                          name = 'Citation Count',
+                          column_labels = "Pubmed Gene + \"Retina\" Citations",
                           column_names_side = 'top')
 ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
 #toc()

@@ -5,8 +5,8 @@ library(tidyverse)
 library(pool)
 library(RSQLite)
 
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
 pubmed_counter <- function(query, sleep_time = 0.2, api_key = '8d33dae565ca3a523495197da36cc085d308'){
   Sys.sleep(sleep_time)
@@ -14,7 +14,7 @@ pubmed_counter <- function(query, sleep_time = 0.2, api_key = '8d33dae565ca3a523
   entrez_id <- get_pubmed_ids(pub_query, api_key = api_key)
   if (entrez_id$Count == 0){
     # run one more time, with a 0.5 second delay
-    Sys.sleep(3)
+    Sys.sleep(1)
     print("RERUN")
     entrez_id <- get_pubmed_ids(pub_query, api_key = api_key)
   }
@@ -31,7 +31,7 @@ pubmed_counter <- function(query, sleep_time = 0.2, api_key = '8d33dae565ca3a523
 #ctr <- meta_filter %>% filter(Tissue == 'Retina') %>% pull(CellType)
 
 queries <- consist_diff %>% 
-  filter(Symbol %in% consist_diff_genes) %>% 
+  #filter(Symbol %in% consist_diff_genes) %>% 
   #filter(Base %in% ctr) %>% 
   mutate(Base2 = gsub('Cell','',Base),
          Base2 = case_when(Base2 == 'AC/HC Precursor' ~ 'Amacrine Horizontal',
@@ -82,8 +82,8 @@ all_diff_symbol <- diff_tab %>% filter(padj < 0.01) %>% pull(Symbol) %>% unique(
 rand_not_marker0 <- all_genes[!all_genes %in% queries$Symbol] 
 rand_not_marker1 <- all_genes[!all_genes %in% all_diff_symbol] 
 
-rand_not_marker0_sample <- rand_not_marker0[sample(1:length(rand_not_marker0), 500)]
-rand_not_marker1_sample <- rand_not_marker1[sample(1:length(rand_not_marker1), 500)]
+rand_not_marker0_sample <- rand_not_marker0[sample(1:length(rand_not_marker0), 1000)]
+rand_not_marker1_sample <- rand_not_marker1[sample(1:length(rand_not_marker1), 1000)]
 
 pm_query3 <- paste0(rand_not_marker1_sample, ' AND Retina')
 pmid3 <- list()
