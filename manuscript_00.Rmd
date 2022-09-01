@@ -438,8 +438,8 @@ load('data/top_marker_pmid.Rdata')
 query0 <- cbind(consist_diff_genes, consist_diff_base) %>% as_tibble() %>%
   left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>%
   mutate(citation = case_when(
-    query0 > mean(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
-    query0 > median(pmid4 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    query0 > mean(pmid5 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query0 > median(pmid5 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
     TRUE ~ "Few")) %>%
   pull(citation)
 
@@ -449,8 +449,8 @@ query2 <- cbind(consist_diff_genes, consist_diff_base) %>%
   as_tibble() %>%
   left_join(queries, by = c('consist_diff_genes' = 'Symbol', 'consist_diff_base' = 'Base')) %>%
   mutate(citation = case_when(
-    query2 > mean(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
-    query2 > median(pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    query2 > mean(pmid6 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query2 > median(pmid6 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
     TRUE ~ "Few")) %>%
   pull(citation)
 #rand_col <-  circlize::colorRamp2(c('0', '1', '2'), c("white", "gray", "black"))

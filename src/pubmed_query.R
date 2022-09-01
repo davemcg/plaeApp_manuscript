@@ -84,6 +84,7 @@ rand_not_marker1 <- all_genes[!all_genes %in% all_diff_symbol]
 
 rand_not_marker0_sample <- rand_not_marker0[sample(1:length(rand_not_marker0), 1000)]
 rand_not_marker1_sample <- rand_not_marker1[sample(1:length(rand_not_marker1), 1000)]
+rand_all <- all_genes[sample(1:length(all_genes), 1000)]
 
 pm_query3 <- paste0(rand_not_marker1_sample, ' AND Retina')
 pmid3 <- list()
@@ -100,6 +101,22 @@ for (i in pm_query4){
   #Sys.sleep(1)
   pmid4[[i]] <- pubmed_counter(i)
 }
+
+pm_query5 <- rand_all
+pmid5 <- list()
+for (i in pm_query5){
+  print(i)
+  #Sys.sleep(1)
+  pmid5[[i]] <- pubmed_counter(i)
+}
+
+pm_query6 <- paste0(rand_all, ' AND Retina')
+pmid6 <- list()
+for (i in pm_query6){
+  print(i)
+  #Sys.sleep(1)
+  pmid6[[i]] <- pubmed_counter(i)
+}
 # pmid2 <- list()
 # for (i in x$pm_query2){
 #   print(i)
@@ -111,5 +128,5 @@ for (i in pm_query4){
 queries <- queries %>% left_join(., pmid0 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query0=value), by = c("Symbol" = "name")) 
 queries <- queries %>% left_join(., pmid1 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query1=value), by = c("pm_query1" = "name")) 
 queries <- queries %>% left_join(., pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist() %>% enframe() %>% rename(query2=value), by = c("pm_query2" = "name"))
-save(pmid0, pmid1, pmid2, pmid3, pmid4, queries, file = 'data/top_marker_pmid.Rdata')
+save(pmid0, pmid1, pmid2, pmid3, pmid4, pmid5, pmid6, queries, file = 'data/top_marker_pmid.Rdata')
 
