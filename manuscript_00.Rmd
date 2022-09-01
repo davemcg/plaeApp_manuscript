@@ -43,10 +43,10 @@ library(captioner)
 library(glue)
 library(tictoc)
 #tic()()
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -82,8 +82,10 @@ meta_filter <- fst::read_fst(glue("{data_dir_vPLAE}/meta_filter.fst")) %>% filte
 
 load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 
-data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
@@ -137,9 +139,14 @@ Every study brought into scEiaD was hand curated to identify unique biological s
 The aggregateAcrossCells function from the scuttle R package was used to aggregate gene counts across species, study accession, and category where category was either Cluster, CellType, or CellType (Predict) assignments for a cell [@mccarthyScaterPreprocessingQuality2017]. If there were fewer than 50 cells in organism - study accession - category combination, they were discarded for the differential test. Any genes with a sum of 0 counts after aggregation were removed. The aggregated matrix was imported into DESeq2 using the DESeqDataSetFromMatrix function with the design given as "~study_accession + category". Contrasts were extracted either with the target category (e.g. "Cone") against all remaining or in a pair wise manner ("Cone" vs "Rod") with the DESeq2 "results" function [@loveModeratedEstimationFold2014a]. 
 <!-- Genes were considered to be significantly differentially expressed if they have a padj less than $1 x 10^-5 and a abs(log2FoldChange) > 2.  -->
 
+## PubMed Citation Search
+
+The R package easyPubMed was used to search for 1000 randomly chosen genes present in scEiaD for both gene name alone and gene name plus "AND Retina" with the get_pubmed_ids function. We then used the returned Entrez identifier to pull the abstract with the fetch_pubmed_data function so we could extract the PubMed ID (PMID). This was repeated with the the genes identified as being well supported differentially expressed for ocular cell types. To assess whether the difference in distributions was statistically different, we used the base R t.test function.  
+
 ## scEiaD structure and web app optimization
 
 The web app at plae.nei.nih.gov can display gene expression across over a million cells in only a few seconds. This speed is only possible due to custom data structures that were optimized for data query efficiency. Like eyeIntegration's EiaD database [@swamyEyeDiskEyeIntegration2019a], scEiaD is a sqlite database with tables for the core categories. This allows the app to initialize in about 30 seconds on a cloud server with memory usage under 8 GB. For the gene by cell expression matrix, the data was transformed into a "long" format where there are three columns: gene, cell barcode, and gene count value. This allows for cell - gene level queries to be completed, again with minimal memory usage, in under 0.5 seconds. To generate the aggregated information (in the Dot Plot, Expression Plot, and tables) we pre-calculated all queries by running a dplyr "group by" operation on all column fields. On user given query, the data is further aggregated to the user request. This allows for complicated queries to complete in seconds rather than minutes. To compare web app loading times for useful tasks we queried https://plae.nei.nih.gov, http://singlecell-eye.org, and http://tabula-sapiens-portal.ds.czbiohub.org, on 2022-08-24. For Spectacle, we used the "Single-Cell RNA-Seq Analysis of Retinal Development..." 10X dataset from Clark et al. for all timings. Timings are accurate to the second. If the functionality tested was not available for a certain web app, it was represented by a blank space. 
+
 
 ## Data reproducibility
 
@@ -153,7 +160,7 @@ Our first version of the single cell Eye is a Disk (scEiaD) database contained `
 
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r fig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')`). The scEiaD database contains `r num2` non-ocular human and mouse tissues and `r num1` ocular tissues across human, chicken, macaque, and mouse (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we prominently feature each of these studies along with a direct link to their citation, where possible, on the loading page of plae.nei.nih.gov.
 
-```{r, fig.height=14, fig.width=12, fig.cap = scEiaD_data_overview_cap}
+```{r, fig.height=14, fig.width=12, fig.cap = scEiaD_data_overview_cap, echo = FALSE}
 
 
 scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. Number of cells for each ocular cell type. B. Number of studies for each ocular predicted cell type (over 10 cells), colored by species. C. Tabulation of the number of studies present across {num1} ocular and {num2} non-ocular tissues, D. Web app timings (lower is better) for important functions compared between PLAE, Spectacle, and Tabula Sapiens (see methods for more details)."))
@@ -327,7 +334,7 @@ While PLAE and Spectacle (https://singlecell-eye.org) both contain large numbers
 
 ## Extensive optimization makes the PLAE web app highly responsive despite containing huge amounts of data
 
-There are two interwoven reasons why the PLAE app is quick, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this approach requires a large amount of disk storage, which can make local (on personal computer) usage difficult; the scEiaD v2022-03-22 sqlite database is about 368 GB. Second, the visualization code in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) to reduce drawing time. In contrast, starting from the loading page of Spectacle, it takes approximately eleven seconds to plot the cell type metadata for a several thousand cells across across a single study (tested on 2022-08-26). Within the same time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies (`r fig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')d`). The speed of the PLAE app is also comparable to the CELLxGENE browser serving the Tabula Sapiens resource while providing additional functionality. 
+There are two interwoven reasons why the PLAE app is quick, despite the huge amount of data it contains. First, the data structure of scEiaD is a sqlite database with pre-calculated tests stored in tables. A sqlite database and its indexing functionality allows large amounts of data to be stored for quick retrieval with minimal loading time and memory usage. The major downside is that this approach requires a large amount of disk storage, which can make local (on personal computer) usage difficult; the scEiaD v2022-03-22 sqlite database is about 368 GB. Second, the visualization code in PLAE (e.g. the UMAP view) pull from the custom database directly and use a highly optimized plotting system (scattermore) to reduce drawing time. In contrast, starting from the loading page of Spectacle, it takes approximately eleven seconds to plot the cell type metadata for a several thousand cells across across a single study (tested on 2022-08-26). Within the same time, PLAE can plot the cell type labels for over a million cells across `r meta_filter_v0$study_accession %>% unique() %>% length()` studies (`r fig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')`d). The speed of the PLAE app is also comparable to the CELLxGENE browser serving the Tabula Sapiens resource while providing additional functionality. 
 
 ## Rich web-available visualizations 
 
@@ -364,9 +371,9 @@ To visualize these top markers we select up to eight genes (ordered by the mean 
 
 To assess whether this marker selection was identifying known or potentially novel marker genes we ran several sets of queries against PubMed. We searched for the gene name or the gene name plus " AND Retina" across all well supported genes against the PubMed database, counting how many citations were returned. In contrast we also selected 1000 random genes that were not considered differentially expressed and ran the same PubMed searches. We find a substantial enrichment of citations for our well supported differentially expressed genes (t test, p < 6.7x10-98 and p < 2.4x10-12) for the gene and gene " and retina" PubMed searches when compared against the 1000 random genes, respectively. To display the results of this search for each individual gene we show visually whether the number of citations returned is less or equal than the median citation count for the random gene set ("few"), more than the median ("some"), or more than the mean ("many"). We see that nearly all genes in (`r fig_cap(name = 'consist_genes_heatmap', display = 'cite')`) reflect existing knowledge. 
 
-Genes which have little existing knowledge can be considered 
+Genes with few citations can be considered as novel markers. We see, for example, Onecut3 appears to well separate the horizontal cells and has few PubMed citations. To assess whether there are any other good candidates with few citations, we produced another heatmap (`r supFig_cap(name = 'undersupported_genes', display = 'cite')`). Most of these genes are differentially expressed across more than one cell type. We hand selected C1ql2 and Cartpt (amacrine), Frzb and Slitrk2 (Muller glia), and Onecut3 (horizontal) and plotted these five genes in the boxplot view to confirm specificity across the full scEiaD database (`r supFig_cap(name = 'lightlyCited_candidates', display = 'cite')`). All five look to be specific to a cell type, except for Frzb which also is expressed in the RPE.
 
-Of course other possibilities for ranking genes are possible. We show in `r supFig_cap(name = 'PLAE_screenshots_supplemental', display = 'cite')`b and c how you can directly use our powerful web app to select candidate bipolar cell differentially expressed genes from the differential testing table and then quickly display the expression pattern of those genes in a compact heatmap visualization. The wealth of visualization options in plae allow for quick prototyping and hypothesis testing of gene expression patterning across a large number of cells and studies. 
+Other possibilities for ranking genes are possible. We show in `r supFig_cap(name = 'PLAE_screenshots_supplemental', display = 'cite')`b and c how one can directly use our powerful web app to select candidate bipolar cell differentially expressed genes from the differential testing table and then quickly display the expression pattern of those genes in a compact heatmap visualization. The wealth of visualization options in plae allow for quick prototyping and hypothesis testing of gene expression patterning across a large number of cells and studies. 
 
 ```{r echo = F, message = F, }
 
@@ -483,7 +490,7 @@ consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide,
                           column_labels = "Pubmed Gene + \"Retina\" Citations",
                           column_names_side = 'top')
 ComplexHeatmap::draw(consist_diff_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
-
+queries %>% select(Symbol, Base, `mean log2FC`, `mean padj`, pm_query0, query0, pm_query2, query2) %>% write_csv("supplemental_files/consistently_differentially_expressed_diff_table.csv.gz")
 #toc()
 ```
 
@@ -691,7 +698,7 @@ plot_grid(v0_rho, v1_rho, ncol = 1, labels = c('a','b'), rel_heights = c(1,1.5))
 num1 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num2 <- meta_filter %>% filter(Organ != 'Eye') %>% pull(Tissue) %>% unique() %>% length()
 num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %>% length()
-sup_scEiaD_data_overview_cap <- supFig_cap(name = '_supscEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types. D. Proportion of cell types (predicted) across each study (split by species and tissue)."))
+sup_scEiaD_data_overview_cap <- supFig_cap(name = 'sup_scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. tabulation of the number of cells present across {num1} ocular and {num2} non-ocular tissues, B. Number of studies for each ocular tissue. C. Number of cells present across {num3} curated ocular-derived cell types. D. Proportion of cell types (predicted) across each study (split by species and tissue)."))
 
 # organ
 meta_filter <- meta_filter %>% mutate(organism = factor(organism, levels = meta_filter$organism %>% unique()))
@@ -878,29 +885,113 @@ plot_grid(a_aa_b, c_d , e ,
 #toc()()
 ```
 
-```{r undersupported_genes, fig.height=48, fig.width=8, echo = FALSE}
-cone_undersupported <- queries %>% filter(query2 <= 1) %>% arrange(-`mean log2FC`) %>% filter(!grepl("Endo|Macro|Micro|Endo", Base)) %>% group_by(Symbol) %>% summarise(Count = n(), Base = paste0(Base, collapse = ', '), l2FC = mean(`mean log2FC`)) %>% filter(Count == 1) %>% filter(Base == 'Rod') %>% arrange(-l2FC)
+```{r undersupported_genes, fig.height=23, fig.width=8, echo = FALSE, fig.cap = undersupported_genes_cap}
+undersupported_genes_cap <- supFig_cap(name = 'undersupported_genes', caption = 'Well supported genes with a mean log2FC > 5 and zero pubmed citation hits for [gene] AND Retina search.')
+
+g_lightlyCited <- queries %>%  filter(`mean log2FC` > 5, query2 < 1) %>% filter(Gene %in% top_genes$Gene) %>% group_by(Base) %>% top_n(12, `mean log2FC`) %>% pull(Gene)
+
+consist_diff_lightlyCited_long <- scEiaD_2020_v01 %>%
+  tbl("diff_testing") %>%
+  filter(Gene %in% g_lightlyCited) %>%
+  collect() %>%
+  filter(Base %in% top_genes$Base,
+         !Base %in% c('Early RPC','Late RPC'), 
+         Group == 'CellType (Predict)',
+         Against == 'All') %>%
+  select(Gene, Organism, log2FoldChange, Base)
+
+consist_diff_lightlyCited_wide <- consist_diff_lightlyCited_long %>% 
+  mutate(GO = paste0(Base, '_', Organism)) %>% 
+  select(-Organism, -Base) %>% 
+  pivot_wider(values_from=log2FoldChange, names_from = GO)
+consist_diff_lightlyCited_celltype <- colnames(consist_diff_lightlyCited_wide[,-1])
+consist_diff_lightlyCited_wide <- consist_diff_lightlyCited_wide %>% data.frame()
+row.names(consist_diff_lightlyCited_wide) <- consist_diff_lightlyCited_wide$Gene
+
+consist_diff_lightlyCited_wide <- consist_diff_lightlyCited_wide[,-1]
+
+
+
+consist_diff_lightlyCited_organism <- str_extract(consist_diff_lightlyCited_celltype, '_\\w+ \\w+') %>% gsub('_','',.)
+consist_diff_lightlyCited_cts  <- str_extract(consist_diff_lightlyCited_celltype, '.*_') %>% gsub('_','',.)
+consist_diff_lightlyCited_genes <- row.names(consist_diff_lightlyCited_wide) %>% gsub(' \\(.*','',.)
+
+consist_diff_lightlyCited_base <- consist_diff_lightlyCited_genes %>% as_tibble() %>% 
+  rename(Symbol = value) %>% 
+  left_join(top_genes %>% 
+              mutate(Symbol = gsub(' \\(.*','',Gene)) %>% 
+              select(Symbol, Base) %>% 
+              unique()) %>% 
+  pull(Base)
 
 
 
 
 
-input <- list()
-input$exp_plot_groups <- c('study_accession')
-input$exp_plot_facet <- c('CellType_predict')
-input$exp_plot_genes <- scEiaD_2020_v01 %>% tbl('Genes') %>% collect() %>% mutate(Symbol = str_extract(Gene, '.* \\(') %>% gsub(' \\(','',.)) %>% filter(Symbol %in% cone_undersupported$Symbol) %>% pull(Gene)
-input$exp_plot_ylab <- 'Mean log2(Counts + 1)'
-input$exp_plot_col_num <- 16
-input$exp_filter_min_cell_number <- 50
-input$flip_facet <- FALSE
-input$figure <- FALSE
-input$figure_bloop <- TRUE
-input$figure_fovea <- FALSE
 
 
-make_exp_plot(input, scEiaD_2020_v01, meta_filter)
+
+
+query0_lightlyCited <- cbind(consist_diff_lightlyCited_genes, consist_diff_lightlyCited_base) %>% as_tibble() %>%
+  left_join(queries, by = c('consist_diff_lightlyCited_genes' = 'Symbol', 'consist_diff_lightlyCited_base' = 'Base')) %>%
+  mutate(citation = case_when(
+    query0 > mean(pmid5 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query0 > median(pmid5 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    TRUE ~ "Few")) %>%
+  pull(citation)
+
+# pmid2 and pmid3 is "AND RETINA"
+# (t.test(pmid2 %>% map(function(x) sum(!is.na(x))) %>% unlist(), pmid3 %>% map(function(x) sum(!is.na(x))) %>% unlist()))$p.value
+query2_lightlyCited <- cbind(consist_diff_lightlyCited_genes, consist_diff_lightlyCited_base) %>%
+  as_tibble() %>%
+  left_join(queries, by = c('consist_diff_lightlyCited_genes' = 'Symbol', 'consist_diff_lightlyCited_base' = 'Base')) %>%
+  mutate(citation = case_when(
+    query2 > mean(pmid6 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Many",
+    query2 > median(pmid6 %>% map(function(x) sum(!is.na(x))) %>% unlist()) ~ "Some",
+    TRUE ~ "Few")) %>%
+  pull(citation)
+#rand_col <-  circlize::colorRamp2(c('0', '1', '2'), c("white", "gray", "black"))
+citation_col <-c('white','gray','black')
+names(citation_col) <-  c('Few','Some','Many')
+
+
+
+
+consist_diff_lightlyCited_hm <- ComplexHeatmap::Heatmap(consist_diff_lightlyCited_wide,
+                                                        column_labels = consist_diff_lightlyCited_organism,
+                                                        column_split = consist_diff_lightlyCited_cts,
+                                                        row_split = consist_diff_lightlyCited_base,
+                                                        show_row_dend = FALSE,
+                                                        column_title_rot = 90,
+                                                        name = 'log2FC', use_raster = TRUE,
+                                                        row_title_rot = 0) +
+  ComplexHeatmap::Heatmap(as.character(query0_lightlyCited),
+                          row_split = consist_diff_lightlyCited_base,
+                          col = citation_col,
+                          show_heatmap_legend = TRUE,
+                          column_labels = "Pubmed Gene Citations",
+                          column_names_side = 'top') +
+  ComplexHeatmap::Heatmap(as.character(query2_lightlyCited),
+                          row_split = consist_diff_lightlyCited_base,
+                          col = citation_col,
+                          show_heatmap_legend = FALSE,
+                          row_labels = consist_diff_lightlyCited_genes,
+                          name = 'Citation Count',
+                          column_labels = "Pubmed Gene + \"Retina\" Citations",
+                          column_names_side = 'top')
+ComplexHeatmap::draw(consist_diff_lightlyCited_hm, padding = unit(c(0, 0, 1.5, 0), "in"), row_title = "Marker Genes")
 
 ```
+
+
+```{r lightlyCited_candidates, echo = F, message = F, fig.cap = lightlyCited_candidates_cap}
+lightlyCited_candidates_cap <- supFig_cap(name='lightlyCited_candidates', caption = 'Five hand-selected genes selected from Supplementary Figure X as having fairly unique expression to a celltype while having few pubmed citations. Plotted as expression/boxplots to confirm specificity at the study level.')
+knitr::include_graphics('fig/lightlyCited_exp_plot.png')
+
+```
+
+
+
 ```{r PLAE_screenshots_supplemental, echo = F, message = F, fig.cap = PLAE_screenshots_supplemental_cap}
 PLAE_screenshots_supplemental_cap <- supFig_cap(name='PLAE_screenshots_supplemental', caption = 'a. Recreation of Figure 4 directly in the plae.nei.nih.gov web app. b. Identify potential bipolar cell markers with the precomputed differential testing and in c. visualize the top five genes with a Heatmap.')
 knitr::include_graphics('fig/plae_sup_fig_screenshots.png')
@@ -1062,6 +1153,7 @@ cat(paste0("\n*",well_supported_celltypes_tab_cap,"*\n"))
 # Output </div>
 cat("</div>")
 ```
+
 
 
 ```{r neuro_table, echo = F, message = F,  echo = F, message = F, results = 'asis',fig.cap=neuro_table_cap}

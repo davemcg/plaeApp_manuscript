@@ -144,7 +144,7 @@ make_exp_plot <- function(input, db, meta_filter){
       ungroup() %>% 
       ggplot(aes(x=!!as.symbol(input$exp_plot_facet), y = !!as.symbol(input$exp_plot_ylab), color = !!as.symbol(grouping_features), group = CellType_predict)) +
       geom_boxplot(color = 'black', outlier.shape = NA) +
-      ggbeeswarm::geom_quasirandom(size = 4, groupOnX = TRUE) +
+      ggbeeswarm::geom_quasirandom(size = 1, groupOnX = TRUE) +
       cowplot::theme_cowplot() +
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
       scale_radius(range=c(2, 6)) +
