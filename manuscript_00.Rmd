@@ -45,10 +45,10 @@ library(tictoc)
 #tic()()
 #data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
 #data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
-data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -86,10 +86,10 @@ load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 
 #data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
 #data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
-data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
 
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
