@@ -45,8 +45,10 @@ library(tictoc)
 #tic()()
 #data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
 #data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
+data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -84,8 +86,11 @@ load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 
 #data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
 #data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
+data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
+
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
 
@@ -102,7 +107,7 @@ num3 <- meta_filter %>% filter(Organ == 'Eye') %>% pull(CellType) %>% unique() %
 
 # Introduction
 
-The retina is composed of six major cell populations: the photoreceptors, horizontal, bipolar, amacrine, ganglion, and non-neuronal cells [@masland_cell_2011]. These six populations can be further divided into dozens of cell types [@yan_cell_2020]. Furthermore, human disease of the eye can derive from damage to specific cell types. Glaucoma is characterized by damage to the retinal ganglion cells while cone and cone-rod dystrophies are characterized by photoreceptor degeneration. Efforts to untangle the transcriptomics of these diverse cell types with single cell transcriptomics date to the early 2000s when researchers [@hagstromConePigmentGene2000b; @jabsEvidenceP2XP2X2000; @liLocalizationDopamineD1receptor2004; @lindqvistSingleCellRTPCR2002a; @reidRetinoschisinPhotoreceptorsecretedProtein2003]  used RT-PCR approaches to amplify select transcripts in small numbers of cells. Later, researchers used microarray platforms to analyze a broader array of transcripts[@cherryDevelopmentDiversificationRetinal2009; @gustincichGeneDiscoveryGenetically2004a; @kimIdentificationMolecularMarkers2008a; @roeschTranscriptomeRetinalMuller2008; @trimarchiIndividualRetinalProgenitor2008; @trimarchiMolecularHeterogeneityDeveloping2007b; @wahlinMethodAnalysisGene2004a]
+The retina is composed of six major cell populations: the photoreceptors, horizontal, bipolar, amacrine, ganglion, and non-neuronal cells [@maslandCellPopulationsRetina2011]. These six populations can be further divided into dozens of cell types [@yanCellAtlasHuman2020a]. Furthermore, human disease of the eye can derive from damage to specific cell types. Glaucoma is characterized by damage to the retinal ganglion cells while cone and cone-rod dystrophies are characterized by photoreceptor degeneration. Efforts to untangle the transcriptomics of these diverse cell types with single cell transcriptomics date to the early 2000s when researchers [@hagstromConePigmentGene2000b; @jabsEvidenceP2XP2X2000; @liLocalizationDopamineD1receptor2004; @lindqvistSingleCellRTPCR2002a; @reidRetinoschisinPhotoreceptorsecretedProtein2003]  used RT-PCR approaches to amplify select transcripts in small numbers of cells. Later, researchers used microarray platforms to analyze a broader array of transcripts[@cherryDevelopmentDiversificationRetinal2009; @gustincichGeneDiscoveryGenetically2004a; @kimIdentificationMolecularMarkers2008a; @roeschTranscriptomeRetinalMuller2008; @trimarchiIndividualRetinalProgenitor2008; @trimarchiMolecularHeterogeneityDeveloping2007b; @wahlinMethodAnalysisGene2004a]
 
 The modern era of single cell transcriptomics ha been marked by the introduction of droplet-based technologies, which enabled quantitation of thousands of cells in a single experiment. This approach was pioneered by Macoksko et al. and enabled the profiling of gene expression in 44,808 single cells in the adult mouse retina. [@kleinDropletBarcodingSingleCell2015; @macoskoHighlyParallelGenomewide2015a]. The commercialization of the droplet approach has enabled broad access to this technology and the ocular community have responded by publishing several dozen ocular studies using single cell transcriptome technology since Macosko publication. 
 
