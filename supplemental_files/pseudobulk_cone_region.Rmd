@@ -90,6 +90,7 @@ region_table %>%
 ### Always look at the plots
 
 We use the "ScaleData" function from Seurat to zero center and scale the counts for each dataset
+
 #### PDE6G 
 Top gene more highly expressed in the macula compared to the periphery. Seems pretty consistently higher across all the studies. 
 ```{r}
@@ -102,12 +103,10 @@ VlnPlot(scEiaD__subset, c('ENSG00000185527'), split.by = 'retina_region', group.
 
 #### All genes
 ```{r}
-for (i in region_table %>% 
-  filter(padj < 0.05) %>% 
-  pull(Ensembl)){
+for (i in region_table %>% filter(padj < 0.05) %>% pull(Ensembl)){
   #print(i)
-  gene_name <- region_table %>% filter(Ensembl == i) %>% pull(Gene)
-  print(VlnPlot(scEiaD__subset, i, split.by = 'retina_region', group.by='study_accession', log = TRUE) + ggtitle(gene_name))
+  gene <- region_table %>% filter(Ensembl == i) %>% pull(Gene)
+  print(VlnPlot(scEiaD__subset, i, split.by = 'retina_region', group.by='study_accession', log = TRUE)  + ggtitle(gene))
 }
 ```
 
