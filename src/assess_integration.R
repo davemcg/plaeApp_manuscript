@@ -24,7 +24,7 @@ accuracy %>%
   summarise(bad_score_sum = sum(score < 0.8), xgboost_score = mean(score)) %>% 
   arrange(-xgboost_score)
 
-perf %>% 
+pop_perf <- perf %>% 
   filter(partition %in% c('universe')) %>% 
   select(-clusterN, -clusterMedian, -subset) %>% 
   pivot_wider(names_from = c('Score','Group'), values_from = Value) %>% 

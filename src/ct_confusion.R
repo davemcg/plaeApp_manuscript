@@ -20,7 +20,7 @@ ct_mat <- ct_mat %>% as.matrix()
 row.names(ct_mat) <- rowN
 ct_mat <- ct_mat[row.names(ct_mat) %>% rev(), ]
 
-ct_confusion <- ComplexHeatmap::Heatmap(ct_mat, cluster_rows = FALSE, cluster_columns = FALSE, col=viridis::viridis(20), name =  'Recall')
+ct_confusion <- ComplexHeatmap::Heatmap(ct_mat, cluster_rows = FALSE, cluster_columns = FALSE, col=viridis::viridis(20), name =  'Recall', row_title = 'Published Cell Type', column_title = 'Predicted Cell Type')
 
 
 ct_table <- meta_filter %>% 
