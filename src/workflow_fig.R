@@ -42,6 +42,7 @@ workflow_plot <- tidy_dagitty(dagified) %>% as_tbl_graph() %>%
                           name == 'scVIrefquery' ~ 'Optimal\nscVI Model',
                           name == 'LatentDims' ~ 'scVI Batch Corrected\nLatent Dims',
                           name == 'SampleInfo' ~ 'Sample\nInfo',
+                          name == 'plae' ~ 'plae.nei.nih.gov',
                           TRUE ~ name)) %>% 
   ggraph(layout = 'auto') + 
   geom_edge_bend2(arrow = arrow(length = unit(3, 'mm')), 
