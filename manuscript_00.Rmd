@@ -21,9 +21,7 @@ output:
     reference_docx: word-styles-reference-01.docx
     keep_md: true
     fig_caption: yes
-    pandoc_args:
-      - '--lua-filter=scholarly-metadata.lua'
-      - '--lua-filter=author-info-blocks.lua'
+
 bibliography: zotero_plaeApp.bib
 csl: investigative-ophthalmology-and-visual-science.csl
 abstract: "PURPOSE: To create a high-performance reactive web application to query single cell gene expression data across cell type, species, study, and other factors. METHODS: We updated the content and structure of the underlying data (single cell Eye in a Disk, scEiaD) and wrote the web application PLAE (https://plae.nei.nih.gov) to visualize and explore it. RESULTS: The new portal provides quick visualization of over a million individual cells from vertebrate eye-and body transcriptomes encompassing four species, 60 cell types, six ocular tissues, and 23 body tissues across 35 publications. To demonstrate the value of this unified pan-eye dataset, we replicate known neurogenic and cone macula markers as well as propose six new cone human region markers. CONCLUSION: The PLAE web application provides the eye community a powerful and quick means to test hypotheses related to gene expression across a highly diverse, community-derived database."
@@ -31,7 +29,7 @@ abstract: "PURPOSE: To create a high-performance reactive web application to que
 keywords: "RNA-seq, lens, cornea, retina, RPE, Snakemake, web, app"
 ---
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(dev = 'svg') # set output device to svg
+knitr::opts_chunk$set(dev = 'pdf', dpi = 1200) # set output device to pdf
 ```
 
 ```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
@@ -49,10 +47,10 @@ library(tictoc)
 #tic()()
 #data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
 #data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
-data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
 # setup caption-ing
 fig_cap <- captioner("Figure")
 supFig_cap <- captioner("Supplemental Figure")
@@ -92,10 +90,10 @@ load('data/diff_data_pull.Rdata') # from src/diff_data_pull.R
 
 #data_dir_vGiga <- '/Volumes/McGaughey_S/data/scEiaD/'
 #data_dir_vPLAE <- '/Volumes/McGaughey_S/data/scEiaD_2022_02/'
-#data_dir_vGiga <- '~/data/scEiaD_gigascience/'
-#data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
-data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
-data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
+data_dir_vGiga <- '~/data/scEiaD_gigascience/'
+data_dir_vPLAE <- '~/data/scEiaD_2022_02/'
+#data_dir_vGiga <- '/Volumes/Thunder/data/scEiaD/'
+#data_dir_vPLAE <- '/Volumes/Thunder/data/scEiaD_2022_02/'
 
 scEiaD_2020_v00 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vGiga}/MOARTABLES__anthology_limmaFALSE___5000-transform-counts-universe-batch-scVIprojectionSO-8-0.1-50-5.sqlite'))
 scEiaD_2020_v01 <- pool::dbPool(RSQLite::SQLite(), dbname =  glue('{data_dir_vPLAE}/MOARTABLES__anthology_limmaFALSE___4000-counts-universe-study_accession-scANVIprojection-15-5-0.1-50-20__pointRelease01.sqlite'))
@@ -134,7 +132,7 @@ Our full scEiaD pipeline was published previously in Swamy et al [@swamyBuilding
 
 ## Quality Control 
 
-To decide whether a droplet is considered a viable cell, we use the "barcodeRanks" algorithm from DropletUtils to automatically identify empty droplets [@lunEmptyDropsDistinguishingCells2019a]. We then kept cells with the following criteria: less than 20% of the counts were in mitochondrial genes, a cell had more than 600 total counts, at least 300 unique genes quantified, and fewer than 100,000 total counts. To identify likely doublets we used Scrublet [@wolockScrubletComputationalIdentification2019a] and doubletCells (from scran) [@lunStepbystepWorkflowLowlevel2016a] to generate per cell doublet probability scores. To identify cells for removal we used the scores in two ways. First, if an individual cell had a Scrublet score greater than 0.8 (where 1.0 is 100% probability of doublet) and a doubletCell score greater than 1,000,000 (unitless measure where higher value is more likely to be doublet) the cell is labelled as a doublet. Second, if a cluster has an average Scrublet score greater than 0.2 or an average doubletCell score greater than 12 the entire cluster was marked as doublets. All cutoff values were selected by hand inspecting density distributions of the Scrublet and doubletCell scores.
+To decide whether a droplet is considered a viable cell, we use the "barcodeRanks" algorithm from DropletUtils to automatically identify empty droplets [@lunEmptyDropsDistinguishingCells2019a]. We then kept cells with the following criteria: less than 10% of the counts were in mitochondrial genes (20% for 10x v3 as this platform has overall higher mitochondrial counts), a cell had more than 600 total counts, at least 300 unique genes quantified, and fewer than 100,000 total counts. To identify likely doublets we used Scrublet [@wolockScrubletComputationalIdentification2019a] and doubletCells (from scran) [@lunStepbystepWorkflowLowlevel2016a] to generate per cell doublet probability scores. To identify cells for removal we used the scores in two ways. First, if an individual cell had a Scrublet score greater than 0.8 (where 1.0 is 100% probability of doublet) and a doubletCell score greater than 1,000,000 (unitless measure where higher value is more likely to be doublet) the cell is labelled as a doublet. Second, if a cluster has an average Scrublet score greater than 0.2 or an average doubletCell score greater than 12 the entire cluster was marked as doublets. All cutoff values were selected by hand inspecting density distributions of the Scrublet and doubletCell scores. Study level distributions of percent mitochondrial genes, total gene counts, and unique genes identified are shown in `r supFig_cap(name = 'qc_metrics', display = 'cite')`.
 
 ## Alterations from Swamy et al. to increase stringency of the dataset
 
@@ -178,13 +176,13 @@ The code base for scEiaD is available at github.com/davemcg/scEiaD; the commit c
 
 ## New studies and processing improvements enhance the scEiaD database
 
-Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` datasets, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types [@swamyBuildingMegaSinglecell2021]. We updated the scEiaD database for the PLAE v0.93 web app in six important ways. First, we added a new species, chicken (*Gallus gallus*) [@yamagataCellAtlasChick2021]. Second we added two ocular outflow tract datasets, one brain choroid plexus, and three cornea datasets to enhance coverage across the eye [@collinSingleCellAtlas2021; @gautamMultispeciesSinglecellTranscriptomic2021; @daniCellularSpatialMap2021; @ligockiMolecularCharacteristicsSpatial2021; @patelMolecularTaxonomyHuman2020; @vanzylCellAtlasAqueous2020]. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons [@heSinglecellTranscriptomeProfiling2020]. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (`r supFig_cap(name = 'decontX', display = 'cite')`). Fifth, we increased the stringency of the cell retention cutoff for detected unique transcripts per cell from 200 to 300. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris project to more easily provide non eye cell type comparisons [@SinglecellTranscriptomics20]. As before, the pipeline's scVI integration parameters were chosen rigorously by testing integration performance across a wide range of latent dimensions and number of highly variable genes in our scPOP framework [@swamyBuildingMegaSinglecell2021] (`r supFig_cap(name = 'scPOP_performance', display = 'cite')`).
+Our first version of the single cell Eye is a Disk (scEiaD) database contained `r meta_filter_v0$study_accession %>% unique() %>% length()` datasets, three species, `r nrow(meta_filter_v0)` cells, and `r meta_filter_v0$CellType_predict %>% unique() %>% length()` curated cell types [@swamyBuildingMegaSinglecell2021]. We updated the scEiaD database for the PLAE v0.94 web app in six important ways. First, we added a new species, chicken (*Gallus gallus*) [@yamagataCellAtlasChick2021]. Second we added two ocular outflow tract datasets, one brain choroid plexus, and three cornea datasets to enhance coverage across the eye [@collinSingleCellAtlas2021; @gautamMultispeciesSinglecellTranscriptomic2021; @daniCellularSpatialMap2021; @ligockiMolecularCharacteristicsSpatial2021; @patelMolecularTaxonomyHuman2020; @vanzylCellAtlasAqueous2020]. Third, we added a human pan-body reference scRNA dataset to allow for non-ocular comparisons [@heSinglecellTranscriptomeProfiling2020]. Fourth, we used an *in silico* method to remove background gene contamination as we noticed persistent Rhodopsin expression in many non-photoreceptors cells (`r supFig_cap(name = 'decontX', display = 'cite')`). Fifth, we increased the stringency of the cell retention cutoff for detected unique transcripts per cell from 200 to 300. Sixth, we carried over and harmonized several common cell type labels from the Tabula Muris project to more easily provide non eye cell type comparisons [@SinglecellTranscriptomics20]. As before, the pipeline's scVI integration parameters were chosen rigorously by testing integration performance across a wide range of latent dimensions and number of highly variable genes in our scPOP framework [@swamyBuildingMegaSinglecell2021] (`r supFig_cap(name = 'scPOP_performance', display = 'cite')`).
 
 Of the `r meta_filter %>% filter(Organ == 'Eye') %>% nrow()` ocular cells, only `r meta_filter %>% filter(Organ == 'Eye', !is.na(CellType)) %>% nrow()` had cell type labels we could recover from the publications or data deposits. To label most of the remaining cells we used our xgboost approach from Swamy et al. which we previousy found performed well when compared to other cell type transfer approaches. The overall accuracy is 96% and the confusion matrix shows the predicted cell type to published cell type recall is very high for most cell types (`r supFig_cap(name = 'sup_CT_confusion', display = 'cite')`). We also see that the cell type labelling works well across the different species  (`r supTab_cap(name = 'sup_CT_table', display = 'cite')`). The cell types with lower labelling performance tended to be ciliary, limbal, and corneal cells (which were often labelled as fibroblasts). There are fewer unique datasets for these cell types and we expect that future runs with more data will improve this performance  
 
 After the dataset and quality control updates the scEiaD v2022-03-21 dataset now contains `r meta_filter$study_accession %>% unique() %>% length()` studies, four species, `r nrow(meta_filter)` cells, and `r meta_filter$CellType_predict %>% unique() %>% length()` curated cell types (`r supFig_cap(name = 'sup_scEiaD_data_overview', display = 'cite')`). The scEiaD database contains `r num2` non-ocular human and mouse tissues and `r num1` ocular tissues across human, chicken, macaque, and mouse (`r fig_cap(name = 'scEiaD_data_overview', display = 'cite')`). This resource is only possible due to the publication of `r meta_filter$PMID %>% unique %>% length()` single cell resources that scEiaD draws from (`r supTab_cap(name = 'studies_table', display = 'cite')`). To recognize these papers, we prominently feature each of these studies along with a direct link to their citation, where possible, on the loading page of plae.nei.nih.gov.
 
-```{r, fig.height=13, fig.width=11, fig.cap = scEiaD_data_overview_cap, echo = FALSE}
+```{r scEiaD_data_overview, fig.height=13, fig.width=11, fig.cap = scEiaD_data_overview_cap, echo = FALSE}
 
 
 scEiaD_data_overview_cap <- fig_cap(name = 'scEiaD_data_overview', caption = glue::glue("Distribution of tissues and cell types in scEiaD. A. Number of cells for each ocular cell type. B. Number of studies for each ocular predicted cell type (over 10 cells), colored by species. C. Tabulation of the number of studies present across {num1} ocular and {num2} non-ocular tissues, D. Web app timings (lower is better) for important functions compared between PLAE, Spectacle, and Tabula Sapiens (see methods for more details)."))
@@ -205,7 +203,7 @@ study_count_by_tissue <- meta_filter %>%
   ggplot(aes(x=Tissue,y=Count, fill = organism, label = Count, group = organism)) +
   ylab('Number of Studies') +
   geom_bar(stat='identity', position='stack') +
-  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5), size = 4) +
+  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5), size = 4, bg.color = 'white', color = 'black') +
   cowplot::theme_cowplot() +
   coord_flip() +
   scale_y_continuous(expand = c(0, 0))  + xlab('') +
@@ -223,7 +221,7 @@ cell_counts <- meta_filter %>% filter(Organ == 'Eye', CellType_predict %in% reti
   ggplot(aes(x=CellType_predict,y=sCount, label = Count, fill = organism, group = organism)) +
   ylab('log2(Number of Cells)') +
   geom_bar(stat='identity', position='stack') +
-  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5), size = 4) + 
+  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5), size = 4, bg.color = 'white', color = 'black') + 
   cowplot::theme_cowplot() +
   coord_flip() + 
   scale_y_continuous(expand = c(0, 0)) + xlab('')
@@ -239,7 +237,7 @@ study_counts_by_cell <- meta_filter %>% filter(Organ == 'Eye', CellType_predict 
   ggplot(aes(x=CellType_predict,y=Count, label = Count, fill = organism, group = organism)) +
   ylab('Number of Studies') +
   geom_bar(stat='identity', position='stack') +
-  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5), size = 4) + 
+  shadowtext::geom_shadowtext(position = position_stack(vjust = 0.5), size = 4, bg.color = 'white', color = 'black') + 
   cowplot::theme_cowplot() +
   coord_flip() + 
   scale_y_continuous(expand = c(0, 0)) + xlab('')
@@ -367,8 +365,8 @@ While scEiaD does not have spatial scRNA seq datasets as of 2023, we do leverage
 We have also added a Heatmap visualization which summaries the relative expression differences between user selected cell types or clusters across human, macaque, and mouse. This plot differs from the Dot Plot view as the expression values are relative instead of absolute. That is to say that while the Dot Plot view is proportionate to counts, the Heatmap view is showing the difference in expression between a given cell type (or cluster) and all other cells as calculated by DESeq2. This view is potentially useful if a user is especially interested in gene expression patterns across a variety of cell types. One downside is that because we currently only have one *Gallus gallus* dataset, we cannot use that data in this visualization because you cannot calculate a meaningful differential expression with only one sample.
 
 ```{r PLAE_screenshots, fig.height = 10, fig.width = 10, echo = F, message = F, fig.cap=PLAE_screenshots_cap}
-PLAE_screenshots_cap <- fig_cap(name='PLAE_screenshots', caption = 'Screenshots from PLAE app. A. UMAP view showing *Crx* expression with cell type labels, B. Information table showing expression of Crx across celltypes and organism. C. Box plot of selected genes in a user selected cell types across different studies. D. In silico in-situ of Rho. E. Dotplot demonstating efficient display of gene expression across many cell types.')
-knitr::include_graphics('fig/figure2 copy.png')
+PLAE_screenshots_cap <- fig_cap(name='PLAE_screenshots', caption = 'Screenshots from PLAE app. A. UMAP view showing *Crx* expression with cell type labels, B. In silico in-situ of Cltb, C. Dotplot demonstating efficient display of gene expression across many cell types. D. Box plot of eight genes, with each overlaid point representing an individual study.')
+knitr::include_graphics('fig/fig2v02.png')
 ```
 
 <!-- ## Leveraging the high diversity of studies to identify thousands of consistently differentially expressed genes across ocular cell types -->
@@ -393,7 +391,7 @@ Genes with relatively few citations can be considered as novel markers. We see, 
 
 Other strategies for ranking genes are possible. We show in `r supFig_cap(name = 'PLAE_screenshots_supplemental', display = 'cite')`b and c how one can directly use our powerful web app to select candidate bipolar cell differentially expressed genes from the differential testing table and then quickly display the expression pattern of those genes in a compact heatmap visualization. The wealth of visualization options in plae allow for quick prototyping and hypothesis testing of gene expression patterning across many cells and studies. 
 
-```{r echo = F, message = F, }
+```{r sup_tab_consist_diff, echo = F, message = F }
 
 # tic()
 # ws_oct <- ws_table %>% filter(`Well Supported` == 'Yes') %>% pull(`CellType (Predict)`)
@@ -490,6 +488,7 @@ consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide,
                                            column_split = consist_diff_cts,
                                            row_split = consist_diff_base,
                                            show_row_dend = FALSE,
+                                           raster_quality = 10,
                                            column_title_rot = 90,
                                            name = 'log2FC', use_raster = TRUE,
                                            row_title_rot = 0) +
@@ -498,11 +497,13 @@ consist_diff_hm <- ComplexHeatmap::Heatmap(consist_diff_wide,
                           col = citation_col,
                           row_labels = consist_diff_genes,
                           show_heatmap_legend = FALSE,
+                          raster_quality = 10,
                           column_labels = "Pubmed Gene Citations",
                           column_names_side = 'top') +
   ComplexHeatmap::Heatmap(as.character(query2),
                           row_split = consist_diff_base,
                           col = citation_col,
+                          raster_quality = 10,
                           row_labels = consist_diff_genes,
                           name = 'Citation Count',
                           column_labels = "Pubmed Gene + \"Retina\" Citations",
@@ -707,6 +708,44 @@ workflow_network_cap <- supFig_cap(name='workflow_network', caption = 'Data flow
 
 source('src/workflow_fig.R')
 workflow_plot  + theme(plot.margin = margin(0,0,0,0 , "cm"))
+```
+
+
+```{r quality_control,  fig.height = 10, fig.width = 14, echo = F, message = F, fig.cap=qc_metrics_cap}
+
+qc_metrics_cap <- supFig_cap(name='qc_metrics', caption = 'Study level box plot showing unique genes identified, total gene counts, and percent mitochondrial reads.')
+
+sample_info <- data.table::fread('~/git/scEiaD/data/sample_run_layout_organism_tech_biosample_organ_2022_03_04.tsv')
+a <- meta_filter  %>% 
+  left_join(sample_info %>% select(sample_accession, Platform) %>% unique()) %>% 
+  select(Platform, study_accession, nFeature_RNA) %>% 
+  ggplot(aes(y=study_accession, x = nFeature_RNA)) + 
+  geom_boxplot() + 
+  ggforce::facet_col(~Platform, scales = 'free', space = 'free') +
+  cowplot::theme_cowplot()
+
+b <- meta_filter  %>% 
+  left_join(sample_info %>% select(sample_accession, Platform) %>% unique()) %>% 
+  select(Platform, study_accession, nCount_RNA) %>% 
+  ggplot(aes(y=study_accession, x = nCount_RNA)) + 
+  geom_boxplot() + 
+  ggforce::facet_col(~Platform, scales = 'free', space = 'free') +
+  ylab('') +
+  cowplot::theme_cowplot() +
+  theme(axis.text.y=element_blank()) 
+
+c <- meta_filter  %>% 
+  left_join(sample_info %>% select(sample_accession, Platform) %>% unique()) %>% 
+  select(Platform, study_accession, percent_mt) %>% 
+  ggplot(aes(y=study_accession, x = percent_mt)) + 
+  geom_boxplot() + 
+  ggforce::facet_col(~Platform, scales = 'free', space = 'free') +
+  ylab('') +
+  cowplot::theme_cowplot() +
+  theme(axis.text.y=element_blank()) 
+
+
+plot_grid(a,b,c, ncol = 3)
 ```
 
 ```{r decontX, fig.height = 15, fig.width = 20, echo = F, message = F, fig.cap=decontX_cap}
@@ -1099,7 +1138,7 @@ cowplot::plot_grid(prph2, rs1,gngt1, ncol = 1)
 # 0
 sup_CT_table_cap <- supTab_cap(name = 'sup_CT_table', caption = 'Count and ratio of cell type and predicted cell type labelling assignments split by organisms shows overall strong labelling performance. Cell type to predicted cell type comparisons with a ratio less than 0.01 were filtered out.')
 cat("<div id=\"tbl:sup_CT_table\">")
-ct_table %>% filter(Ratio > 0.01) %>% flextable() %>% autofit() %>% fit_to_width(7)
+ct_table %>% filter(Ratio > 0.01) %>% flextable() %>% autofit() %>% fit_to_width(12)
 
 #Output Caption (* * for italics)
 cat(paste0("\n*",sup_CT_table_cap,"*\n"))
